@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grade 6 Math Quiz</title>
+    
+    <!-- Google OAuth Integration -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
     <style>
         * {
             margin: 0;
@@ -269,10 +273,98 @@
             color: #666;
             font-weight: bold;
         }
+
+        /* New styles for login section */
+        .login-section {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7); /* Semi-transparent overlay */
+            z-index: 1000;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .login-title {
+            font-size: 2.5em;
+            color: #4a5568;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .login-subtitle {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .user-info {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .user-info img {
+            border: 2px solid #4d96ff;
+        }
+
+        .user-info button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-info button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
-    <div class="quiz-container">
+    <!-- Google OAuth Login Section -->
+    <div id="loginSection" class="login-section">
+        <div class="login-container">
+            <h1 class="login-title">🧮 Math Quiz Adventure! 🌟</h1>
+            <p class="login-subtitle">Sign in with Google to start your math adventure!</p>
+            <div id="g_id_onload"
+                 data-client_id="YOUR_CLIENT_ID_HERE.apps.googleusercontent.com"
+                 data-context="signin"
+                 data-ux_mode="popup"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="outline"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left">
+            </div>
+        </div>
+    </div>
+
+    <div class="quiz-container" id="quizContainer">
         <div class="header">
             <h1 class="title">🧮 Math Quiz Adventure! 🌟</h1>
             <div class="progress-bar">
@@ -683,8 +775,85 @@
 
         // Initialize the quiz when the page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new MathQuiz();
+            // Initialize Google OAuth
+            initializeGoogleOAuth();
         });
+
+        // Google OAuth Functions
+        function initializeGoogleOAuth() {
+            // Check if user is already signed in
+            const token = localStorage.getItem('google_token');
+            if (token) {
+                // User is already authenticated, show quiz
+                showQuiz();
+            }
+            // If not authenticated, login section is already visible
+        }
+
+        function handleCredentialResponse(response) {
+            console.log('Google OAuth response received:', response);
+            
+            // Decode the JWT token to get user info
+            const payload = decodeJwtResponse(response.credential);
+            console.log('User info:', payload);
+            
+            // Store the token and user info
+            localStorage.setItem('google_token', response.credential);
+            localStorage.setItem('user_info', JSON.stringify(payload));
+            
+            // Hide login section and show quiz
+            hideLogin();
+            showQuiz();
+            
+            // Initialize the quiz
+            new MathQuiz();
+        }
+
+        function decodeJwtResponse(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        function hideLogin() {
+            document.getElementById('loginSection').style.display = 'none';
+        }
+
+        function showQuiz() {
+            document.getElementById('quizContainer').style.display = 'block';
+            
+            // Add user info and logout button to header
+            const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+            const header = document.querySelector('.header');
+            
+            // Add user info display
+            const userDisplay = document.createElement('div');
+            userDisplay.className = 'user-info';
+            userDisplay.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                    <img src="${userInfo.picture || ''}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%;" onerror="this.style.display='none'">
+                    <span style="color: #4a5568; font-weight: bold;">Welcome, ${userInfo.name || 'User'}!</span>
+                    <button onclick="logout()" class="nav-button" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;">Logout</button>
+                </div>
+            `;
+            header.insertBefore(userDisplay, header.firstChild);
+        }
+
+        function logout() {
+            // Clear stored credentials
+            localStorage.removeItem('google_token');
+            localStorage.removeItem('user_info');
+            
+            // Show login section again
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('quizContainer').style.display = 'none';
+            
+            // Reload page to reset quiz state
+            location.reload();
+        }
     </script>
 </body>
 </html>
