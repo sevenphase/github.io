@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade 6 Math Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .quiz-container {
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcf7f, #4d96ff, #9c88ff);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 2.5em;
+            color: #4a5568;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar {
+            background: #e2e8f0;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #ff6b6b, #4d96ff);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .score-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .star-container {
+            display: flex;
+            gap: 5px;
+        }
+
+        .star {
+            font-size: 2em;
+            transition: all 0.3s ease;
+            filter: grayscale(100%);
+        }
+
+        .star.earned {
+            filter: grayscale(0%);
+            transform: scale(1.2);
+            animation: sparkle 0.6s ease;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { transform: scale(1.2); }
+            50% { transform: scale(1.4) rotate(10deg); }
+        }
+
+        .question-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .question-number {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .question-text {
+            font-size: 1.4em;
+            line-height: 1.4;
+        }
+
+        .topic-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .answer-section {
+            margin: 30px 0;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 15px;
+            border: 3px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1.2em;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .answer-input:focus {
+            border-color: #4d96ff;
+            box-shadow: 0 0 0 3px rgba(77, 150, 255, 0.2);
+        }
+
+        .multiple-choice {
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .choice-button {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .choice-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .choice-button.selected {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            transform: scale(1.02);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+        }
+
+        .nav-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .submit-button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: all 0.5s ease;
+        }
+
+        .feedback.correct {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: #2d5016;
+        }
+
+        .feedback.incorrect {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #c53030;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #4a5568;
+            font-size: 1.2em;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #4d96ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .question-counter {
+            font-size: 1.1em;
+            color: #666;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <div class="header">
+            <h1 class="title">🧮 Math Quiz Adventure! 🌟</h1>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="score-display">
+                <span style="font-size: 1.2em; font-weight: bold; color: #4a5568;">Score:</span>
+                <div class="star-container" id="starContainer">
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                </div>
+                <span id="scoreText" style="font-size: 1.2em; font-weight: bold; color: #4a5568;">0/5</span>
+            </div>
+        </div>
+
+        <div id="loadingScreen" class="loading">
+            <div class="spinner"></div>
+            <div>Loading your math adventure...</div>
+        </div>
+
+        <div id="quizContent" style="display: none;">
+            <div class="question-counter">
+                <span id="questionCounter">Question 1 of 5</span>
+            </div>
+
+            <div class="question-card">
+                <div class="question-number" id="questionNumber">Question 1</div>
+                <div class="question-text" id="questionText">Loading question...</div>
+                <div class="topic-badge" id="topicBadge">Topic</div>
+            </div>
+
+            <div class="answer-section">
+                <input type="text" class="answer-input" id="textAnswer" placeholder="Type your answer here..." style="display: none;">
+                <div class="multiple-choice" id="multipleChoice" style="display: none;"></div>
+            </div>
+
+            <div class="controls">
+                <button class="nav-button" id="prevButton" disabled>
+                    ← Previous
+                </button>
+                <button class="submit-button" id="submitButton">Submit Answer</button>
+                <button class="nav-button" id="nextButton" disabled>
+                    Next →
+                </button>
+            </div>
+
+            <div id="feedback" class="feedback" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        class MathQuiz {
+            constructor() {
+                this.questions = [];
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                this.answers = {};
+                this.selectedChoice = null;
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    await this.loadQuestions();
+                    this.setupEventListeners();
+                    this.displayQuestion();
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    document.getElementById('quizContent').style.display = 'block';
+                } catch (error) {
+                    document.getElementById('loadingScreen').innerHTML = `
+                        <div style="color: #e53e3e; text-align: center;">
+                            <h2>❌ Failed to Load Quiz</h2>
+                            <p>${error.message}</p>
+                            <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                                Please ensure the Google Sheet is shared publicly with "Anyone with the link can view" permissions.
+                            </p>
+                        </div>
+                    `;
+                }
+            }
+
+            async loadQuestions() {
+                // ✅ Test Deployment URL for SigmaForm Quiz Backend (Working!)
+                const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjvZizX8pcin8wezjFT1PHwskquorHHY0k2tdCJjM/dev';
+                
+                console.log('🔄 STEP 1: Starting to load questions from Google Sheets...');
+                console.log('🔗 STEP 2: Using Apps Script URL:', APPS_SCRIPT_URL);
+                
+                // First, let's test if we can reach the URL at all
+                console.log('🧪 TESTING: Can we reach the Apps Script URL?');
+                try {
+                    console.log('📡 STEP 3: Making fetch request...');
+                    const response = await fetch(APPS_SCRIPT_URL, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
+                    
+                    console.log('📊 STEP 4: Response received');
+                    console.log('📊 STEP 4a: Response status:', response.status);
+                    console.log('📊 STEP 4b: Response ok:', response.ok);
+                    console.log('📊 STEP 4c: Response type:', response.type);
+                    console.log('📊 STEP 4d: Response url:', response.url);
+                    
+                    if (!response.ok) {
+                        console.error('❌ Response not OK:', response.status, response.statusText);
+                        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+                    }
+                    
+                    console.log('📝 STEP 5: Getting response text...');
+                    const csvText = await response.text();
+                    console.log('📝 STEP 6: CSV text received, length:', csvText.length);
+                    console.log('📝 STEP 6b: First 300 characters:', csvText.substring(0, 300));
+                    console.log('📝 STEP 6c: CSV text type:', typeof csvText);
+                    
+                    if (!csvText || csvText.length === 0) {
+                        throw new Error('Empty response from Apps Script - check your script');
+                    }
+                    
+                    console.log('🔍 STEP 7: Parsing CSV...');
+                    this.questions = this.parseCSV(csvText);
+                    console.log('✅ STEP 8: Parsed questions count:', this.questions.length);
+                    
+                    if (this.questions.length > 0) {
+                        console.log('✅ STEP 8b: First question sample:', this.questions[0]);
+                    }
+                    
+                    if (this.questions.length === 0) {
+                        throw new Error('No questions found in spreadsheet - check CSV format and parsing');
+                    }
+                    
+                    console.log('🎉 SUCCESS: Questions loaded successfully!');
+                    
+                } catch (error) {
+                    console.error('❌ DETAILED ERROR:', error);
+                    console.error('❌ ERROR name:', error.name);
+                    console.error('❌ ERROR message:', error.message);
+                    
+                    // Provide specific troubleshooting based on error type
+                    if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
+                        console.log('🔧 NETWORK ERROR TROUBLESHOOTING:');
+                        console.log('1. Check if your Apps Script is deployed as a Web App');
+                        console.log('2. Verify "Anyone" access is set in deployment');
+                        console.log('3. Try accessing this URL directly in a new browser tab:', APPS_SCRIPT_URL);
+                        
+                        throw new Error(`Network error accessing Apps Script. Please:
+                        1. Verify your Apps Script is deployed as a Web App
+                        2. Set access to "Anyone" in the deployment settings
+                        3. Test the URL directly: ${APPS_SCRIPT_URL}`);
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+
+            parseCSV(csvText) {
+                console.log('🔍 PARSING CSV - Raw text length:', csvText.length);
+                
+                const lines = csvText.split('\n').filter(line => line.trim());
+                console.log('🔍 PARSING CSV - Total lines after filtering:', lines.length);
+                console.log('🔍 PARSING CSV - First few lines:', lines.slice(0, 3));
+                
+                const questions = [];
+                
+                // Skip header row (starts at index 1)
+                for (let i = 1; i < lines.length; i++) {
+                    console.log(`🔍 PARSING LINE ${i}:`, lines[i]);
+                    
+                    try {
+                        // Handle CSV parsing with potential commas in quoted fields
+                        const columns = this.parseCSVLine(lines[i]);
+                        console.log(`🔍 PARSED COLUMNS ${i}:`, columns);
+                        
+                        if (columns.length >= 5) {
+                            const question = {
+                                number: parseInt(columns[0]) || i,
+                                question: columns[1]?.trim() || '',
+                                topic: columns[2]?.trim() || '',
+                                answerType: columns[3]?.trim() || 'Short Answer',
+                                answer: columns[4]?.trim() || ''
+                            };
+                            
+                            console.log(`📝 QUESTION OBJECT ${i}:`, question);
+                            
+                            // Handle Multiple Choice questions
+                            if (question.answerType === 'Multiple Choice') {
+                                console.log(`🎯 PROCESSING MULTIPLE CHOICE for question ${i}`);
+                                const answerText = question.answer;
+                                
+                                // Extract choices (look for A), B), C), D) pattern)
+                                const choiceMatches = answerText.match(/[A-D]\)[^A-D\[\]]+/g);
+                                if (choiceMatches) {
+                                    question.choices = choiceMatches.map(choice => choice.trim());
+                                    console.log(`🎯 FOUND CHOICES:`, question.choices);
+                                }
+                                
+                                // Extract correct answer (look for [Correct: X] pattern)
+                                const correctMatch = answerText.match(/\[Correct:\s*([A-D])\]/i);
+                                if (correctMatch) {
+                                    question.answer = correctMatch[1].toUpperCase();
+                                    console.log(`🎯 CORRECT ANSWER:`, question.answer);
+                                } else {
+                                    // Default to A if no correct answer specified
+                                    question.answer = 'A';
+                                    console.log(`⚠️ NO CORRECT ANSWER FOUND, defaulting to A`);
+                                }
+                            }
+                            
+                            questions.push(question);
+                            console.log(`✅ ADDED QUESTION ${question.number} to array`);
+                        } else {
+                            console.log(`⚠️ SKIPPING LINE ${i} - insufficient columns (${columns.length})`);
+                        }
+                    } catch (error) {
+                        console.warn(`❌ Error parsing line ${i}:`, lines[i], error);
+                    }
+                }
+                
+                console.log('✅ FINAL QUESTIONS ARRAY:', questions);
+                return questions;
+            }
+
+            parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                result.push(current); // Don't forget the last column
+                return result;
+            }
+
+            setupEventListeners() {
+                document.getElementById('submitButton').addEventListener('click', () => this.submitAnswer());
+                document.getElementById('prevButton').addEventListener('click', () => this.previousQuestion());
+                document.getElementById('nextButton').addEventListener('click', () => this.nextQuestion());
+                
+                document.getElementById('textAnswer').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.submitAnswer();
+                });
+            }
+
+            displayQuestion() {
+                const question = this.questions[this.currentQuestionIndex];
+                
+                document.getElementById('questionNumber').textContent = `Question ${question.number}`;
+                document.getElementById('questionText').textContent = question.question;
+                document.getElementById('topicBadge').textContent = question.topic;
+                document.getElementById('questionCounter').textContent = `Question ${this.currentQuestionIndex + 1} of ${this.questions.length}`;
+                
+                this.updateProgress();
+                this.setupAnswerInput(question);
+                this.updateNavigationButtons();
+                this.hideFeedback();
+            }
+
+            setupAnswerInput(question) {
+                const textInput = document.getElementById('textAnswer');
+                const multipleChoice = document.getElementById('multipleChoice');
+                
+                if (question.answerType === 'Multiple Choice') {
+                    textInput.style.display = 'none';
+                    multipleChoice.style.display = 'grid';
+                    multipleChoice.innerHTML = '';
+                    
+                    question.choices.forEach((choice, index) => {
+                        const button = document.createElement('button');
+                        button.className = 'choice-button';
+                        button.textContent = choice;
+                        button.addEventListener('click', () => this.selectChoice(index, button));
+                        multipleChoice.appendChild(button);
+                    });
+                } else {
+                    textInput.style.display = 'block';
+                    multipleChoice.style.display = 'none';
+                    textInput.value = this.answers[this.currentQuestionIndex] || '';
+                    textInput.focus();
+                }
+                
+                this.selectedChoice = null;
+            }
+
+            selectChoice(index, button) {
+                document.querySelectorAll('.choice-button').forEach(btn => btn.classList.remove('selected'));
+                button.classList.add('selected');
+                this.selectedChoice = index;
+            }
+
+            submitAnswer() {
+                const question = this.questions[this.currentQuestionIndex];
+                let userAnswer;
+                
+                if (question.answerType === 'Multiple Choice') {
+                    if (this.selectedChoice === null) {
+                        alert('Please select an answer!');
+                        return;
+                    }
+                    userAnswer = String.fromCharCode(65 + this.selectedChoice); // Convert to A, B, C, D
+                } else {
+                    userAnswer = document.getElementById('textAnswer').value.trim();
+                    if (!userAnswer) {
+                        alert('Please enter an answer!');
+                        return;
+                    }
+                }
+                
+                this.answers[this.currentQuestionIndex] = userAnswer;
+                const isCorrect = this.checkAnswer(userAnswer, question.answer);
+                
+                if (isCorrect && !this.isQuestionAnswered(this.currentQuestionIndex)) {
+                    this.score++;
+                    this.updateStars();
+                }
+                
+                this.showFeedback(isCorrect, question.answer);
+                this.updateNavigationButtons();
+            }
+
+            checkAnswer(userAnswer, correctAnswer) {
+                // Normalize answers for comparison
+                const normalize = (answer) => answer.toString().toLowerCase().replace(/[,\s]/g, '');
+                return normalize(userAnswer) === normalize(correctAnswer);
+            }
+
+            isQuestionAnswered(index) {
+                return this.answers.hasOwnProperty(index);
+            }
+
+            showFeedback(isCorrect, correctAnswer) {
+                const feedback = document.getElementById('feedback');
+                feedback.style.display = 'block';
+                
+                if (isCorrect) {
+                    feedback.className = 'feedback correct';
+                    feedback.innerHTML = '🎉 Excellent! You got it right! ⭐';
+                } else {
+                    feedback.className = 'feedback incorrect';
+                    feedback.innerHTML = `❌ Not quite right. The correct answer is: ${correctAnswer}`;
+                }
+            }
+
+            hideFeedback() {
+                document.getElementById('feedback').style.display = 'none';
+            }
+
+            updateStars() {
+                const stars = document.querySelectorAll('.star');
+                stars.forEach((star, index) => {
+                    if (index < this.score) {
+                        star.classList.add('earned');
+                    }
+                });
+                
+                document.getElementById('scoreText').textContent = `${this.score}/${this.questions.length}`;
+            }
+
+            updateProgress() {
+                const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+            }
+
+            updateNavigationButtons() {
+                const prevButton = document.getElementById('prevButton');
+                const nextButton = document.getElementById('nextButton');
+                const submitButton = document.getElementById('submitButton');
+                
+                prevButton.disabled = this.currentQuestionIndex === 0;
+                nextButton.disabled = this.currentQuestionIndex === this.questions.length - 1;
+                
+                if (this.isQuestionAnswered(this.currentQuestionIndex)) {
+                    submitButton.textContent = 'Update Answer';
+                    nextButton.disabled = false;
+                } else {
+                    submitButton.textContent = 'Submit Answer';
+                }
+            }
+
+            previousQuestion() {
+                if (this.currentQuestionIndex > 0) {
+                    this.currentQuestionIndex--;
+                    this.displayQuestion();
+                }
+            }
+
+            nextQuestion() {
+                if (this.currentQuestionIndex < this.questions.length - 1) {
+                    this.currentQuestionIndex++;
+                    this.displayQuestion();
+                }
+            }
+        }
+
+        // Initialize the quiz when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MathQuiz();
+        });
+    </script>
+</body>
+</html>
