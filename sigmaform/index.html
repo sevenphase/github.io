@@ -420,14 +420,28 @@
 
     <script>
         class MathQuiz {
-            constructor() {
-                this.questions = [];
+            constructor(questions = null) {
+                this.questions = questions || [];
                 this.currentQuestionIndex = 0;
                 this.score = 0;
                 this.answers = {};
                 this.selectedChoice = null;
                 
-                this.init();
+                if (questions) {
+                    // Questions provided, initialize directly
+                    this.initWithQuestions();
+                } else {
+                    // No questions provided, load from Apps Script
+                    this.init();
+                }
+            }
+
+            initWithQuestions() {
+                // Questions already loaded, initialize directly
+                this.setupEventListeners();
+                this.displayQuestion();
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('quizContent').style.display = 'block';
             }
 
             async init() {
@@ -444,15 +458,14 @@
                             <p>${error.message}</p>
                             <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
                                 Please ensure the Google Sheet is shared publicly with "Anyone with the link can view" permissions.
-                            </p>
-                        </div>
+                            </div>
                     `;
                 }
             }
 
             async loadQuestions() {
-                // ✅ Test Deployment URL for SigmaForm Quiz Backend (Working!)
-                const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjvZizX8pcin8wezjFT1PHwskquorHHY0k2tdCJjM/dev';
+                // ✅ Production Apps Script URL for SigmaForm Quiz
+                const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxEVjpsKb4HNdEv262OgWLFD9v_vC2TEWNxU9BJ-SL2WVo6o24EmGuBh5HQPxkkIq7M/exec';
                 
                 console.log('🔄 STEP 1: Starting to load questions from Google Sheets...');
                 console.log('🔗 STEP 2: Using Apps Script URL:', APPS_SCRIPT_URL);
@@ -790,7 +803,39 @@
             // If not authenticated, login section is already visible
         }
 
-        function handleCredentialResponse(response) {
+        // CSV Parsing and Question Loading
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, ''));
+            const questions = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
+                const question = {};
+                
+                headers.forEach((header, index) => {
+                    question[header.toLowerCase().replace(/\s+/g, '_')] = values[index];
+                });
+                
+                questions.push(question);
+            }
+            
+            return questions;
+        }
+
+        async function loadQuestionsFromSpreadsheet() {
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxEVjpsKb4HNdEv262OgWLFD9v_vC2TEWNxU9BJ-SL2WVo6o24EmGuBh5HQPxkkIq7M/exec');
+                const csvText = await response.text();
+                const questions = parseCSV(csvText);
+                return questions;
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                return null;
+            }
+        }
+
+        async function handleCredentialResponse(response) {
             console.log('Google OAuth response received:', response);
             
             // Decode the JWT token to get user info
@@ -805,8 +850,13 @@
             hideLogin();
             showQuiz();
             
-            // Initialize the quiz
-            new MathQuiz();
+            // Load questions from spreadsheet and initialize quiz
+            const questions = await loadQuestionsFromSpreadsheet();
+            if (questions) {
+                new MathQuiz(questions); // Pass questions to quiz
+            } else {
+                alert('Error loading questions. Please try again.');
+            }
         }
 
         function decodeJwtResponse(token) {
@@ -840,6 +890,11 @@
                 </div>
             `;
             header.insertBefore(userDisplay, header.firstChild);
+            
+            // If no quiz is initialized yet, initialize it
+            if (!window.currentQuiz) {
+                window.currentQuiz = new MathQuiz();
+            }
         }
 
         function logout() {
