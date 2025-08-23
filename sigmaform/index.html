@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grade 6 Math Quiz</title>
-    
+
     <!-- Google OAuth Integration -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
+
     <style>
         * {
             margin: 0;
@@ -342,7 +342,7 @@
 </head>
 <body>
     <!-- Google OAuth Login Section -->
-    <div id="loginSection" class="login-section">
+    <div id="loginSection" class="login-section" style="display: none;">
         <div class="login-container">
             <h1 class="login-title">🧮 Math Quiz Adventure! 🌟</h1>
             <p class="login-subtitle">Sign in with Google to start your math adventure!</p>
@@ -364,7 +364,7 @@
         </div>
     </div>
 
-    <div class="quiz-container" id="quizContainer">
+    <div class="quiz-container" id="quizContainer" style="display: none;">
         <div class="header">
             <h1 class="title">🧮 Math Quiz Adventure! 🌟</h1>
             <div class="progress-bar">
@@ -426,7 +426,7 @@
                 this.score = 0;
                 this.answers = {};
                 this.selectedChoice = null;
-                
+
                 if (questions) {
                     // Questions provided, initialize directly
                     this.initWithQuestions();
@@ -466,10 +466,10 @@
             async loadQuestions() {
                 // ✅ Production Apps Script URL for SigmaForm Quiz
                 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxEVjpsKb4HNdEv262OgWLFD9v_vC2TEWNxU9BJ-SL2WVo6o24EmGuBh5HQPxkkIq7M/exec';
-                
+
                 console.log('🔄 STEP 1: Starting to load questions from Google Sheets...');
                 console.log('🔗 STEP 2: Using Apps Script URL:', APPS_SCRIPT_URL);
-                
+
                 // First, let's test if we can reach the URL at all
                 console.log('🧪 TESTING: Can we reach the Apps Script URL?');
                 try {
@@ -479,54 +479,54 @@
                         mode: 'cors',
                         cache: 'no-cache'
                     });
-                    
+
                     console.log('📊 STEP 4: Response received');
                     console.log('📊 STEP 4a: Response status:', response.status);
                     console.log('📊 STEP 4b: Response ok:', response.ok);
                     console.log('📊 STEP 4c: Response type:', response.type);
                     console.log('📊 STEP 4d: Response url:', response.url);
-                    
+
                     if (!response.ok) {
                         console.error('❌ Response not OK:', response.status, response.statusText);
                         throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
                     }
-                    
+
                     console.log('📝 STEP 5: Getting response text...');
                     const csvText = await response.text();
                     console.log('📝 STEP 6: CSV text received, length:', csvText.length);
                     console.log('📝 STEP 6b: First 300 characters:', csvText.substring(0, 300));
                     console.log('📝 STEP 6c: CSV text type:', typeof csvText);
-                    
+
                     if (!csvText || csvText.length === 0) {
                         throw new Error('Empty response from Apps Script - check your script');
                     }
-                    
+
                     console.log('🔍 STEP 7: Parsing CSV...');
                     this.questions = this.parseCSV(csvText);
                     console.log('✅ STEP 8: Parsed questions count:', this.questions.length);
-                    
+
                     if (this.questions.length > 0) {
                         console.log('✅ STEP 8b: First question sample:', this.questions[0]);
                     }
-                    
+
                     if (this.questions.length === 0) {
                         throw new Error('No questions found in spreadsheet - check CSV format and parsing');
                     }
-                    
+
                     console.log('🎉 SUCCESS: Questions loaded successfully!');
-                    
+
                 } catch (error) {
                     console.error('❌ DETAILED ERROR:', error);
                     console.error('❌ ERROR name:', error.name);
                     console.error('❌ ERROR message:', error.message);
-                    
+
                     // Provide specific troubleshooting based on error type
                     if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
                         console.log('🔧 NETWORK ERROR TROUBLESHOOTING:');
                         console.log('1. Check if your Apps Script is deployed as a Web App');
                         console.log('2. Verify "Anyone" access is set in deployment');
                         console.log('3. Try accessing this URL directly in a new browser tab:', APPS_SCRIPT_URL);
-                        
+
                         throw new Error(`Network error accessing Apps Script. Please:
                         1. Verify your Apps Script is deployed as a Web App
                         2. Set access to "Anyone" in the deployment settings
@@ -539,22 +539,22 @@
 
             parseCSV(csvText) {
                 console.log('🔍 PARSING CSV - Raw text length:', csvText.length);
-                
+
                 const lines = csvText.split('\n').filter(line => line.trim());
                 console.log('🔍 PARSING CSV - Total lines after filtering:', lines.length);
                 console.log('🔍 PARSING CSV - First few lines:', lines.slice(0, 3));
-                
+
                 const questions = [];
-                
+
                 // Skip header row (starts at index 1)
                 for (let i = 1; i < lines.length; i++) {
                     console.log(`🔍 PARSING LINE ${i}:`, lines[i]);
-                    
+
                     try {
                         // Handle CSV parsing with potential commas in quoted fields
                         const columns = this.parseCSVLine(lines[i]);
                         console.log(`🔍 PARSED COLUMNS ${i}:`, columns);
-                        
+
                         if (columns.length >= 5) {
                             const question = {
                                 number: parseInt(columns[0]) || i,
@@ -563,21 +563,21 @@
                                 answerType: columns[3]?.trim() || 'Short Answer',
                                 answer: columns[4]?.trim() || ''
                             };
-                            
+
                             console.log(`📝 QUESTION OBJECT ${i}:`, question);
-                            
+
                             // Handle Multiple Choice questions
                             if (question.answerType === 'Multiple Choice') {
                                 console.log(`🎯 PROCESSING MULTIPLE CHOICE for question ${i}`);
                                 const answerText = question.answer;
-                                
+
                                 // Extract choices (look for A), B), C), D) pattern)
                                 const choiceMatches = answerText.match(/[A-D]\)[^A-D\[\]]+/g);
                                 if (choiceMatches) {
                                     question.choices = choiceMatches.map(choice => choice.trim());
                                     console.log(`🎯 FOUND CHOICES:`, question.choices);
                                 }
-                                
+
                                 // Extract correct answer (look for [Correct: X] pattern)
                                 const correctMatch = answerText.match(/\[Correct:\s*([A-D])\]/i);
                                 if (correctMatch) {
@@ -589,7 +589,7 @@
                                     console.log(`⚠️ NO CORRECT ANSWER FOUND, defaulting to A`);
                                 }
                             }
-                            
+
                             questions.push(question);
                             console.log(`✅ ADDED QUESTION ${question.number} to array`);
                         } else {
@@ -599,7 +599,7 @@
                         console.warn(`❌ Error parsing line ${i}:`, lines[i], error);
                     }
                 }
-                
+
                 console.log('✅ FINAL QUESTIONS ARRAY:', questions);
                 return questions;
             }
@@ -608,10 +608,10 @@
                 const result = [];
                 let current = '';
                 let inQuotes = false;
-                
+
                 for (let i = 0; i < line.length; i++) {
                     const char = line[i];
-                    
+
                     if (char === '"') {
                         inQuotes = !inQuotes;
                     } else if (char === ',' && !inQuotes) {
@@ -621,7 +621,7 @@
                         current += char;
                     }
                 }
-                
+
                 result.push(current); // Don't forget the last column
                 return result;
             }
@@ -630,7 +630,7 @@
                 document.getElementById('submitButton').addEventListener('click', () => this.submitAnswer());
                 document.getElementById('prevButton').addEventListener('click', () => this.previousQuestion());
                 document.getElementById('nextButton').addEventListener('click', () => this.nextQuestion());
-                
+
                 document.getElementById('textAnswer').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.submitAnswer();
                 });
@@ -638,12 +638,12 @@
 
             displayQuestion() {
                 const question = this.questions[this.currentQuestionIndex];
-                
+
                 document.getElementById('questionNumber').textContent = `Question ${question.number}`;
                 document.getElementById('questionText').textContent = question.question;
                 document.getElementById('topicBadge').textContent = question.topic;
                 document.getElementById('questionCounter').textContent = `Question ${this.currentQuestionIndex + 1} of ${this.questions.length}`;
-                
+
                 this.updateProgress();
                 this.setupAnswerInput(question);
                 this.updateNavigationButtons();
@@ -653,12 +653,12 @@
             setupAnswerInput(question) {
                 const textInput = document.getElementById('textAnswer');
                 const multipleChoice = document.getElementById('multipleChoice');
-                
+
                 if (question.answerType === 'Multiple Choice') {
                     textInput.style.display = 'none';
                     multipleChoice.style.display = 'grid';
                     multipleChoice.innerHTML = '';
-                    
+
                     question.choices.forEach((choice, index) => {
                         const button = document.createElement('button');
                         button.className = 'choice-button';
@@ -672,7 +672,7 @@
                     textInput.value = this.answers[this.currentQuestionIndex] || '';
                     textInput.focus();
                 }
-                
+
                 this.selectedChoice = null;
             }
 
@@ -685,7 +685,7 @@
             submitAnswer() {
                 const question = this.questions[this.currentQuestionIndex];
                 let userAnswer;
-                
+
                 if (question.answerType === 'Multiple Choice') {
                     if (this.selectedChoice === null) {
                         alert('Please select an answer!');
@@ -699,15 +699,15 @@
                         return;
                     }
                 }
-                
+
                 this.answers[this.currentQuestionIndex] = userAnswer;
                 const isCorrect = this.checkAnswer(userAnswer, question.answer);
-                
+
                 if (isCorrect && !this.isQuestionAnswered(this.currentQuestionIndex)) {
                     this.score++;
                     this.updateStars();
                 }
-                
+
                 this.showFeedback(isCorrect, question.answer);
                 this.updateNavigationButtons();
             }
@@ -725,7 +725,7 @@
             showFeedback(isCorrect, correctAnswer) {
                 const feedback = document.getElementById('feedback');
                 feedback.style.display = 'block';
-                
+
                 if (isCorrect) {
                     feedback.className = 'feedback correct';
                     feedback.innerHTML = '🎉 Excellent! You got it right! ⭐';
@@ -746,7 +746,7 @@
                         star.classList.add('earned');
                     }
                 });
-                
+
                 document.getElementById('scoreText').textContent = `${this.score}/${this.questions.length}`;
             }
 
@@ -759,10 +759,10 @@
                 const prevButton = document.getElementById('prevButton');
                 const nextButton = document.getElementById('nextButton');
                 const submitButton = document.getElementById('submitButton');
-                
+
                 prevButton.disabled = this.currentQuestionIndex === 0;
                 nextButton.disabled = this.currentQuestionIndex === this.questions.length - 1;
-                
+
                 if (this.isQuestionAnswered(this.currentQuestionIndex)) {
                     submitButton.textContent = 'Update Answer';
                     nextButton.disabled = false;
@@ -808,18 +808,18 @@
             const lines = csvText.trim().split('\n');
             const headers = lines[0].split(',').map(h => h.replace(/"/g, ''));
             const questions = [];
-            
+
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
                 const question = {};
-                
+
                 headers.forEach((header, index) => {
                     question[header.toLowerCase().replace(/\s+/g, '_')] = values[index];
                 });
-                
+
                 questions.push(question);
             }
-            
+
             return questions;
         }
 
@@ -837,19 +837,19 @@
 
         async function handleCredentialResponse(response) {
             console.log('Google OAuth response received:', response);
-            
+
             // Decode the JWT token to get user info
             const payload = decodeJwtResponse(response.credential);
             console.log('User info:', payload);
-            
+
             // Store the token and user info
             localStorage.setItem('google_token', response.credential);
             localStorage.setItem('user_info', JSON.stringify(payload));
-            
+
             // Hide login section and show quiz
             hideLogin();
             showQuiz();
-            
+
             // Load questions from spreadsheet and initialize quiz
             const questions = await loadQuestionsFromSpreadsheet();
             if (questions) {
@@ -874,11 +874,11 @@
 
         function showQuiz() {
             document.getElementById('quizContainer').style.display = 'block';
-            
+
             // Add user info and logout button to header
             const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
             const header = document.querySelector('.header');
-            
+
             // Add user info display
             const userDisplay = document.createElement('div');
             userDisplay.className = 'user-info';
@@ -890,7 +890,7 @@
                 </div>
             `;
             header.insertBefore(userDisplay, header.firstChild);
-            
+
             // If no quiz is initialized yet, initialize it
             if (!window.currentQuiz) {
                 window.currentQuiz = new MathQuiz();
@@ -901,14 +901,75 @@
             // Clear stored credentials
             localStorage.removeItem('google_token');
             localStorage.removeItem('user_info');
-            
+
             // Show login section again
             document.getElementById('loginSection').style.display = 'flex';
             document.getElementById('quizContainer').style.display = 'none';
-            
+
             // Reload page to reset quiz state
             location.reload();
         }
+
+        // Check authentication state on page load
+        function checkAuthState() {
+            const token = localStorage.getItem('google_token');
+            const userInfo = localStorage.getItem('user_info');
+
+            if (token && userInfo) {
+                try {
+                    // Verify the stored user info is valid JSON
+                    const parsedUserInfo = JSON.parse(userInfo);
+
+                    // Basic validation - check if user info has required fields
+                    if (parsedUserInfo.name && parsedUserInfo.email) {
+                        console.log('✅ User already authenticated:', parsedUserInfo.name);
+
+                        // User is already logged in - skip login, show quiz
+                        hideLogin();
+                        showQuiz();
+
+                        // Load questions from spreadsheet and initialize quiz
+                        loadQuestionsFromSpreadsheet().then(questions => {
+                            if (questions) {
+                                new MathQuiz(questions);
+                            } else {
+                                console.error('❌ Failed to load questions');
+                                // If questions fail to load, fall back to login
+                                showLogin();
+                            }
+                        });
+                    } else {
+                        console.log('⚠️ Invalid user info stored, clearing and showing login');
+                        // Clear invalid data and show login
+                        localStorage.removeItem('google_token');
+                        localStorage.removeItem('user_info');
+                        showLogin();
+                    }
+                } catch (error) {
+                    console.error('❌ Error parsing stored user info:', error);
+                    // Clear corrupted data and show login
+                    localStorage.removeItem('google_token');
+                    localStorage.removeItem('user_info');
+                    showLogin();
+                }
+            } else {
+                console.log('ℹ️ No stored credentials, showing login screen');
+                // User needs to login - show login screen
+                showLogin();
+            }
+        }
+
+        // Show login section
+        function showLogin() {
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('quizContainer').style.display = 'none';
+        }
+
+        // Check authentication state when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔄 Page loaded, checking authentication state...');
+            checkAuthState();
+        });
     </script>
 </body>
 </html>
