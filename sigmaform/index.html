@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grade 6 Math Quiz</title>
-    <script src="https://accounts.google.com/gsi/client" async defer onload="initializeGsi"></script>
+
+    <!-- Google OAuth Integration -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <style>
         * {
             margin: 0;
@@ -271,8 +274,9 @@
             font-weight: bold;
         }
 
+        /* New styles for login section */
         .login-section {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -280,7 +284,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.7); /* Semi-transparent overlay */
             z-index: 1000;
         }
 
@@ -337,16 +341,19 @@
     </style>
 </head>
 <body>
+    <!-- Google OAuth Login Section -->
     <div id="loginSection" class="login-section" style="display: none;">
         <div class="login-container">
-            <h1 class="login-title">Math Quiz Adventure!</h1>
+            <h1 class="login-title">🧮 Math Quiz Adventure! 🌟</h1>
             <p class="login-subtitle">Sign in with Google to start your math adventure!</p>
             <div id="g_id_onload"
                  data-client_id="141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com"
                  data-context="signin"
                  data-ux_mode="popup"
                  data-callback="handleCredentialResponse"
-                 data-auto_prompt="false">
+                 data-auto_prompt="false"
+                 data-one_tap="true"
+                 data-prompt_parent_id="loginSection">
             </div>
             <div class="g_id_signin"
                  data-type="standard"
@@ -361,7 +368,7 @@
 
     <div class="quiz-container" id="quizContainer" style="display: none;">
         <div class="header">
-            <h1 class="title">Math Quiz Adventure!</h1>
+            <h1 class="title">🧮 Math Quiz Adventure! 🌟</h1>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
@@ -414,9 +421,6 @@
     </div>
 
     <script>
-        let googleUser = null;
-        let isGoogleInitialized = false;
-
         class MathQuiz {
             constructor(questions = null) {
                 this.questions = questions || [];
@@ -425,14 +429,17 @@
                 this.answers = {};
                 this.selectedChoice = null;
 
-                if (questions && questions.length > 0) {
+                if (questions) {
+                    // Questions provided, initialize directly
                     this.initWithQuestions();
                 } else {
+                    // No questions provided, load from Apps Script
                     this.init();
                 }
             }
 
             initWithQuestions() {
+                // Questions already loaded, initialize directly
                 this.setupEventListeners();
                 this.displayQuestion();
                 document.getElementById('loadingScreen').style.display = 'none';
@@ -449,44 +456,107 @@
                 } catch (error) {
                     document.getElementById('loadingScreen').innerHTML = `
                         <div style="color: #e53e3e; text-align: center;">
-                            <h2>Failed to Load Quiz</h2>
+                            <h2>❌ Failed to Load Quiz</h2>
                             <p>${error.message}</p>
-                        </div>
+                            <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                                Please ensure the Google Sheet is shared publicly with "Anyone with the link can view" permissions.
+                            </div>
                     `;
                 }
             }
 
             async loadQuestions() {
+                // ✅ Production Apps Script URL for SigmaForm Quiz
                 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybGyQtOKz4HEvMX8j8Tvb6Wkngx19RB5ulHidh_Ge6_JUd1eWGZ7GSl_xtukIv5mQ2/exec';
 
-                const response = await fetch(APPS_SCRIPT_URL, {
-                    method: 'GET',
-                    mode: 'cors',
-                    cache: 'no-cache'
-                });
+                console.log('🔄 STEP 1: Starting to load questions from Google Sheets...');
+                console.log('🔗 STEP 2: Using Apps Script URL:', APPS_SCRIPT_URL);
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                // First, let's test if we can reach the URL at all
+                console.log('🧪 TESTING: Can we reach the Apps Script URL?');
+                try {
+                    console.log('📡 STEP 3: Making fetch request...');
+                    const response = await fetch(APPS_SCRIPT_URL, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
 
-                const csvText = await response.text();
-                if (!csvText || csvText.length === 0) {
-                    throw new Error('Empty response from Apps Script');
-                }
+                    console.log('📊 STEP 4: Response received');
+                    console.log('📊 STEP 4a: Response status:', response.status);
+                    console.log('📊 STEP 4b: Response ok:', response.ok);
+                    console.log('📊 STEP 4c: Response type:', response.type);
+                    console.log('📊 STEP 4d: Response url:', response.url);
 
-                this.questions = this.parseCSV(csvText);
-                if (this.questions.length === 0) {
-                    throw new Error('No questions found in spreadsheet');
+                    if (!response.ok) {
+                        console.error('❌ Response not OK:', response.status, response.statusText);
+                        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+                    }
+
+                    console.log('📝 STEP 5: Getting response text...');
+                    const csvText = await response.text();
+                    console.log('📝 STEP 6: CSV text received, length:', csvText.length);
+                    console.log('📝 STEP 6b: First 300 characters:', csvText.substring(0, 300));
+                    console.log('📝 STEP 6c: CSV text type:', typeof csvText);
+
+                    if (!csvText || csvText.length === 0) {
+                        throw new Error('Empty response from Apps Script - check your script');
+                    }
+
+                    console.log('🔍 STEP 7: Parsing CSV...');
+                    this.questions = this.parseCSV(csvText);
+                    console.log('✅ STEP 8: Parsed questions count:', this.questions.length);
+
+                    if (this.questions.length > 0) {
+                        console.log('✅ STEP 8b: First question sample:', this.questions[0]);
+                    }
+
+                    if (this.questions.length === 0) {
+                        throw new Error('No questions found in spreadsheet - check CSV format and parsing');
+                    }
+
+                    console.log('🎉 SUCCESS: Questions loaded successfully!');
+
+                } catch (error) {
+                    console.error('❌ DETAILED ERROR:', error);
+                    console.error('❌ ERROR name:', error.name);
+                    console.error('❌ ERROR message:', error.message);
+
+                    // Provide specific troubleshooting based on error type
+                    if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
+                        console.log('🔧 NETWORK ERROR TROUBLESHOOTING:');
+                        console.log('1. Check if your Apps Script is deployed as a Web App');
+                        console.log('2. Verify "Anyone" access is set in deployment');
+                        console.log('3. Try accessing this URL directly in a new browser tab:', APPS_SCRIPT_URL);
+
+                        throw new Error(`Network error accessing Apps Script. Please:
+                        1. Verify your Apps Script is deployed as a Web App
+                        2. Set access to "Anyone" in the deployment settings
+                        3. Test the URL directly: ${APPS_SCRIPT_URL}`);
+                    } else {
+                        throw error;
+                    }
                 }
             }
 
             parseCSV(csvText) {
+                console.log('🔍 PARSING CSV - Raw text length:', csvText.length);
+
                 const lines = csvText.split('\n').filter(line => line.trim());
+                console.log('🔍 PARSING CSV - Total lines after filtering:', lines.length);
+                console.log('🔍 PARSING CSV - First few lines:', lines.slice(0, 3));
+
                 const questions = [];
 
+                // Skip header row (starts at index 1)
                 for (let i = 1; i < lines.length; i++) {
+                    console.log(`🔍 PARSING LINE ${i}:`, lines[i]);
+
                     try {
+                        // Handle CSV parsing with potential commas in quoted fields
                         const columns = this.parseCSVLine(lines[i]);
+                        console.log(`🔍 PARSED COLUMNS ${i}:`, columns);
+
                         if (columns.length >= 5) {
                             const question = {
                                 number: parseInt(columns[0]) || i,
@@ -496,26 +566,43 @@
                                 answer: columns[4]?.trim() || ''
                             };
 
+                            console.log(`📝 QUESTION OBJECT ${i}:`, question);
+
+                            // Handle Multiple Choice questions
                             if (question.answerType === 'Multiple Choice') {
+                                console.log(`🎯 PROCESSING MULTIPLE CHOICE for question ${i}`);
                                 const answerText = question.answer;
+
+                                // Extract choices (look for A), B), C), D) pattern)
                                 const choiceMatches = answerText.match(/[A-D]\)[^A-D\[\]]+/g);
                                 if (choiceMatches) {
                                     question.choices = choiceMatches.map(choice => choice.trim());
+                                    console.log(`🎯 FOUND CHOICES:`, question.choices);
                                 }
 
+                                // Extract correct answer (look for [Correct: X] pattern)
                                 const correctMatch = answerText.match(/\[Correct:\s*([A-D])\]/i);
-                                question.answer = correctMatch ? correctMatch[1].toUpperCase() : 'A';
+                                if (correctMatch) {
+                                    question.answer = correctMatch[1].toUpperCase();
+                                    console.log(`🎯 CORRECT ANSWER:`, question.answer);
+                                } else {
+                                    // Default to A if no correct answer specified
+                                    question.answer = 'A';
+                                    console.log(`⚠️ NO CORRECT ANSWER FOUND, defaulting to A`);
+                                }
                             }
 
-                            if (question.question) {
-                                questions.push(question);
-                            }
+                            questions.push(question);
+                            console.log(`✅ ADDED QUESTION ${question.number} to array`);
+                        } else {
+                            console.log(`⚠️ SKIPPING LINE ${i} - insufficient columns (${columns.length})`);
                         }
                     } catch (error) {
-                        console.warn(`Error parsing line ${i}:`, error);
+                        console.warn(`❌ Error parsing line ${i}:`, lines[i], error);
                     }
                 }
 
+                console.log('✅ FINAL QUESTIONS ARRAY:', questions);
                 return questions;
             }
 
@@ -526,6 +613,7 @@
 
                 for (let i = 0; i < line.length; i++) {
                     const char = line[i];
+
                     if (char === '"') {
                         inQuotes = !inQuotes;
                     } else if (char === ',' && !inQuotes) {
@@ -535,7 +623,8 @@
                         current += char;
                     }
                 }
-                result.push(current);
+
+                result.push(current); // Don't forget the last column
                 return result;
             }
 
@@ -543,6 +632,7 @@
                 document.getElementById('submitButton').addEventListener('click', () => this.submitAnswer());
                 document.getElementById('prevButton').addEventListener('click', () => this.previousQuestion());
                 document.getElementById('nextButton').addEventListener('click', () => this.nextQuestion());
+
                 document.getElementById('textAnswer').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.submitAnswer();
                 });
@@ -550,6 +640,7 @@
 
             displayQuestion() {
                 const question = this.questions[this.currentQuestionIndex];
+
                 document.getElementById('questionNumber').textContent = `Question ${question.number}`;
                 document.getElementById('questionText').textContent = question.question;
                 document.getElementById('topicBadge').textContent = question.topic;
@@ -602,7 +693,7 @@
                         alert('Please select an answer!');
                         return;
                     }
-                    userAnswer = String.fromCharCode(65 + this.selectedChoice);
+                    userAnswer = String.fromCharCode(65 + this.selectedChoice); // Convert to A, B, C, D
                 } else {
                     userAnswer = document.getElementById('textAnswer').value.trim();
                     if (!userAnswer) {
@@ -624,6 +715,7 @@
             }
 
             checkAnswer(userAnswer, correctAnswer) {
+                // Normalize answers for comparison
                 const normalize = (answer) => answer.toString().toLowerCase().replace(/[,\s]/g, '');
                 return normalize(userAnswer) === normalize(correctAnswer);
             }
@@ -638,10 +730,10 @@
 
                 if (isCorrect) {
                     feedback.className = 'feedback correct';
-                    feedback.innerHTML = 'Excellent! You got it right!';
+                    feedback.innerHTML = '🎉 Excellent! You got it right! ⭐';
                 } else {
                     feedback.className = 'feedback incorrect';
-                    feedback.innerHTML = `Not quite right. The correct answer is: ${correctAnswer}`;
+                    feedback.innerHTML = `❌ Not quite right. The correct answer is: ${correctAnswer}`;
                 }
             }
 
@@ -656,6 +748,7 @@
                         star.classList.add('earned');
                     }
                 });
+
                 document.getElementById('scoreText').textContent = `${this.score}/${this.questions.length}`;
             }
 
@@ -695,167 +788,86 @@
             }
         }
 
+        // Initialize the quiz when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Google OAuth
+            initializeGoogleOAuth();
+        });
+
         // Google OAuth Functions
-        function initializeGsi() {
-            console.log('Initializing Google Identity Services...');
-            
-            google.accounts.id.initialize({
-                client_id: "141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com",
-                callback: handleCredentialResponse,
-                auto_select: false
-            });
-
-            isGoogleInitialized = true;
-            checkAuthenticationState();
-        }
-
-        function checkAuthenticationState() {
-            // Check if user info exists in localStorage (as fallback)
-            const storedUserInfo = localStorage.getItem('user_info');
-            
-            if (storedUserInfo) {
-                try {
-                    googleUser = JSON.parse(storedUserInfo);
-                    if (googleUser.name && googleUser.email) {
-                        console.log('Found stored user info, showing quiz');
-                        showQuiz();
-                        loadAndStartQuiz();
-                        return;
-                    }
-                } catch (error) {
-                    console.error('Invalid stored user info, clearing...');
-                    localStorage.removeItem('user_info');
-                    localStorage.removeItem('google_token');
-                }
+        function initializeGoogleOAuth() {
+            // Check if user is already signed in
+            const token = localStorage.getItem('google_token');
+            if (token) {
+                // User is already authenticated, show quiz
+                showQuiz();
             }
-
-            // Use Google's prompt to check for existing session
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // User might be already signed in or dismissed
-                    console.log('Google prompt not displayed, showing login');
-                    showLogin();
-                } else {
-                    // Show login screen
-                    showLogin();
-                }
-            });
+            // If not authenticated, login section is already visible
         }
 
-        async function handleCredentialResponse(response) {
-            console.log('Google OAuth response received');
-
-            try {
-                const userInfo = parseJwtToken(response.credential);
-                
-                if (userInfo) {
-                    googleUser = userInfo;
-                    
-                    // Store for session persistence (temporary fallback)
-                    localStorage.setItem('google_token', response.credential);
-                    localStorage.setItem('user_info', JSON.stringify(userInfo));
-                    
-                    console.log('User authenticated:', userInfo.name);
-                    hideLogin();
-                    showQuiz();
-                    
-                    const questions = await loadQuestionsFromSpreadsheet();
-                    if (questions && questions.length > 0) {
-                        new MathQuiz(questions);
-                    } else {
-                        alert('Error loading questions. Please try again.');
-                    }
-                }
-            } catch (error) {
-                console.error('Authentication error:', error);
-                showLogin();
-            }
-        }
-
-        function parseJwtToken(token) {
-            try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                
-                const payload = JSON.parse(jsonPayload);
-                
-                // Basic validation
-                if (payload.aud !== '141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com') {
-                    throw new Error('Invalid audience');
-                }
-                
-                if (payload.exp < Date.now() / 1000) {
-                    throw new Error('Token expired');
-                }
-                
-                return {
-                    name: payload.name,
-                    email: payload.email,
-                    picture: payload.picture,
-                    sub: payload.sub
-                };
-            } catch (error) {
-                console.error('Token parsing failed:', error);
-                return null;
-            }
-        }
-
-        async function loadQuestionsFromSpreadsheet() {
-            try {
-                const response = await fetch('https://script.google.com/macros/s/AKfycbybGyQtOKz4HEvMX8j8Tvb6Wkngx19RB5ulHidh_Ge6_JUd1eWGZ7GSl_xtukIv5mQ2/exec');
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const csvText = await response.text();
-                return parseSimpleCSV(csvText);
-            } catch (error) {
-                console.error('Error loading questions:', error);
-                return [];
-            }
-        }
-
-        function parseSimpleCSV(csvText) {
+        // CSV Parsing and Question Loading
+        function parseCSV(csvText) {
             const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, ''));
             const questions = [];
 
             for (let i = 1; i < lines.length; i++) {
-                try {
-                    const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-                    if (values.length >= 5 && values[1]) {
-                        questions.push({
-                            number: parseInt(values[0]) || i,
-                            question: values[1],
-                            topic: values[2] || 'Math',
-                            answerType: values[3] || 'Short Answer',
-                            answer: values[4]
-                        });
-                    }
-                } catch (error) {
-                    console.warn(`Error parsing line ${i}:`, error);
-                }
+                const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
+                const question = {};
+
+                headers.forEach((header, index) => {
+                    question[header.toLowerCase().replace(/\s+/g, '_')] = values[index];
+                });
+
+                questions.push(question);
             }
 
             return questions;
         }
 
-        function showLogin() {
-            document.getElementById('loginSection').style.display = 'flex';
-            document.getElementById('quizContainer').style.display = 'none';
-            
-            if (isGoogleInitialized) {
-                google.accounts.id.renderButton(
-                    document.querySelector('.g_id_signin'),
-                    { 
-                        theme: 'outline', 
-                        size: 'large',
-                        text: 'signin_with',
-                        shape: 'rectangular'
-                    }
-                );
+        async function loadQuestionsFromSpreadsheet() {
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxEVjpsKb4HNdEv262OgWLFD9v_vC2TEWNxU9BJ-SL2WVo6o24EmGuBh5HQPxkkIq7M/exec');
+                const csvText = await response.text();
+                const questions = parseCSV(csvText);
+                return questions;
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                return null;
             }
+        }
+
+        async function handleCredentialResponse(response) {
+            console.log('Google OAuth response received:', response);
+
+            // Decode the JWT token to get user info
+            const payload = decodeJwtResponse(response.credential);
+            console.log('User info:', payload);
+
+            // Store the token and user info
+            localStorage.setItem('google_token', response.credential);
+            localStorage.setItem('user_info', JSON.stringify(payload));
+
+            // Hide login section and show quiz
+            hideLogin();
+            showQuiz();
+
+            // Load questions from spreadsheet and initialize quiz
+            const questions = await loadQuestionsFromSpreadsheet();
+            if (questions) {
+                new MathQuiz(questions); // Pass questions to quiz
+            } else {
+                alert('Error loading questions. Please try again.');
+            }
+        }
+
+        function decodeJwtResponse(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
         }
 
         function hideLogin() {
@@ -865,82 +877,101 @@
         function showQuiz() {
             document.getElementById('quizContainer').style.display = 'block';
 
-            if (googleUser) {
-                const header = document.querySelector('.header');
-                
-                // Remove existing user display
-                const existingUserDisplay = header.querySelector('.user-info');
-                if (existingUserDisplay) {
-                    existingUserDisplay.remove();
-                }
+            // Add user info and logout button to header
+            const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+            const header = document.querySelector('.header');
 
-                // Add user info display
-                const userDisplay = document.createElement('div');
-                userDisplay.className = 'user-info';
-                userDisplay.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <img src="${googleUser.picture || ''}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%;" onerror="this.style.display='none'">
-                        <span style="color: #4a5568; font-weight: bold;">Welcome, ${googleUser.name || 'User'}!</span>
-                        <button onclick="logout()" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;">Logout</button>
-                    </div>
-                `;
-                header.insertBefore(userDisplay, header.firstChild);
-            }
-        }
+            // Add user info display
+            const userDisplay = document.createElement('div');
+            userDisplay.className = 'user-info';
+            userDisplay.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                    <img src="${userInfo.picture || ''}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%;" onerror="this.style.display='none'">
+                    <span style="color: #4a5568; font-weight: bold;">Welcome, ${userInfo.name || 'User'}!</span>
+                    <button onclick="logout()" class="nav-button" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;">Logout</button>
+                </div>
+            `;
+            header.insertBefore(userDisplay, header.firstChild);
 
-        async function loadAndStartQuiz() {
-            try {
-                const questions = await loadQuestionsFromSpreadsheet();
-                if (questions && questions.length > 0) {
-                    new MathQuiz(questions);
-                } else {
-                    document.getElementById('loadingScreen').innerHTML = `
-                        <div style="color: #e53e3e; text-align: center;">
-                            <h2>No Questions Found</h2>
-                            <p>Please check your Google Sheets configuration.</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error loading quiz:', error);
-                document.getElementById('loadingScreen').innerHTML = `
-                    <div style="color: #e53e3e; text-align: center;">
-                        <h2>Error Loading Quiz</h2>
-                        <p>${error.message}</p>
-                    </div>
-                `;
+            // If no quiz is initialized yet, initialize it
+            if (!window.currentQuiz) {
+                window.currentQuiz = new MathQuiz();
             }
         }
 
         function logout() {
-            console.log('Logging out user...');
-            
-            try {
-                google.accounts.id.disableAutoSelect();
-                googleUser = null;
-                localStorage.removeItem('google_token');
-                localStorage.removeItem('user_info');
-                showLogin();
-                console.log('User logged out successfully');
-            } catch (error) {
-                console.error('Logout error:', error);
-                googleUser = null;
-                localStorage.removeItem('google_token');
-                localStorage.removeItem('user_info');
+            // Clear stored credentials
+            localStorage.removeItem('google_token');
+            localStorage.removeItem('user_info');
+
+            // Show login section again
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('quizContainer').style.display = 'none';
+
+            // Reload page to reset quiz state
+            location.reload();
+        }
+
+        // Check authentication state on page load
+        function checkAuthState() {
+            const token = localStorage.getItem('google_token');
+            const userInfo = localStorage.getItem('user_info');
+
+            if (token && userInfo) {
+                try {
+                    // Verify the stored user info is valid JSON
+                    const parsedUserInfo = JSON.parse(userInfo);
+
+                    // Basic validation - check if user info has required fields
+                    if (parsedUserInfo.name && parsedUserInfo.email) {
+                        console.log('✅ User already authenticated:', parsedUserInfo.name);
+
+                        // User is already logged in - skip login, show quiz
+                        hideLogin();
+                        showQuiz();
+
+                        // Load questions from spreadsheet and initialize quiz
+                        loadQuestionsFromSpreadsheet().then(questions => {
+                            if (questions) {
+                                new MathQuiz(questions);
+                            } else {
+                                console.error('❌ Failed to load questions');
+                                // If questions fail to load, fall back to login
+                                showLogin();
+                            }
+                        });
+                    } else {
+                        console.log('⚠️ Invalid user info stored, clearing and showing login');
+                        // Clear invalid data and show login
+                        localStorage.removeItem('google_token');
+                        localStorage.removeItem('user_info');
+                        showLogin();
+                    }
+                } catch (error) {
+                    console.log('❌ Error parsing stored user info:', error);
+                    // Clear corrupted data and show login
+                    localStorage.removeItem('google_token');
+                    localStorage.removeItem('user_info');
+                    showLogin();
+                }
+            } else {
+                console.log('ℹ️ No stored credentials, checking for existing Google session...');
+                // Try to detect existing Google session with One Tap
+                // The One Tap will automatically appear if user is signed in elsewhere
                 showLogin();
             }
         }
 
-        // Initialize when page loads
+        // Show login section
+        function showLogin() {
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('quizContainer').style.display = 'none';
+        }
+
+        // Check authentication state when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, waiting for Google Identity Services...');
-            
-            if (typeof google === 'undefined' || !google.accounts) {
-                console.log('Waiting for Google Identity Services to load...');
-                // The onload="initializeGsi" in the script tag will handle initialization
-            } else {
-                initializeGsi();
-            }
+            console.log('🔄 Page loaded, checking authentication state...');
+            checkAuthState();
         });
     </script>
 </body>
