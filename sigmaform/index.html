@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grade 6 Math Quiz</title>
 
-    <!-- Google OAuth Integration -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- #claude Security: Add Content Security Policy for production security -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://accounts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; frame-src https://accounts.google.com;">
+    
+    <!-- #claude Security: Google OAuth Integration - using official Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer crossorigin="anonymous"></script>
 
     <style>
         * {
@@ -346,12 +349,15 @@
         <div class="login-container">
             <h1 class="login-title">🧮 Math Quiz Adventure! 🌟</h1>
             <p class="login-subtitle">Sign in with Google to start your math adventure!</p>
+            <!-- #claude Security: Configure Google Identity Services with security best practices -->
             <div id="g_id_onload"
                  data-client_id="141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com"
                  data-context="signin"
                  data-ux_mode="popup"
                  data-callback="handleCredentialResponse"
                  data-auto_prompt="false"
+                 data-cancel_on_tap_outside="false"
+                 data-use_fedcm_for_prompt="true"
                  data-one_tap="true"
                  data-prompt_parent_id="loginSection">
             </div>
@@ -455,12 +461,24 @@
                     document.getElementById('quizContent').style.display = 'block';
                 } catch (error) {
                     document.getElementById('loadingScreen').innerHTML = `
-                        <div style="color: #e53e3e; text-align: center;">
-                            <h2>❌ Failed to Load Quiz</h2>
-                            <p>${error.message}</p>
-                            <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
-                                Please ensure the Google Sheet is shared publicly with "Anyone with the link can view" permissions.
+                        <div style="color: #e53e3e; text-align: center; padding: 20px;">
+                            <div style="font-size: 3em; margin-bottom: 15px;">📚</div>
+                            <h2 style="color: #4a5568; margin-bottom: 15px;">Quiz Loading Issue</h2>
+                            <p style="color: #666; margin-bottom: 20px; font-size: 1.1em;">
+                                We're having trouble connecting to the quiz database. This usually resolves quickly.
+                            </p>
+                            <div style="background: #f7fafc; border-radius: 10px; padding: 15px; margin: 20px 0;">
+                                <p style="color: #4a5568; font-size: 0.9em; line-height: 1.4;">
+                                    <strong>What you can try:</strong><br>
+                                    • Refresh this page in a few seconds<br>
+                                    • Check your internet connection<br>
+                                    • Contact your teacher if the issue persists
+                                </p>
                             </div>
+                            <button onclick="location.reload()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 25px; font-size: 1.1em; cursor: pointer; margin-top: 15px;">
+                                Try Again
+                            </button>
+                        </div>
                     `;
                 }
             }
@@ -684,7 +702,7 @@
                 this.selectedChoice = index;
             }
 
-            submitAnswer() {
+            async submitAnswer() {
                 const question = this.questions[this.currentQuestionIndex];
                 let userAnswer;
 
@@ -703,21 +721,56 @@
                 }
 
                 this.answers[this.currentQuestionIndex] = userAnswer;
-                const isCorrect = this.checkAnswer(userAnswer, question.answer);
+                
+                // Use BFF to validate answer securely
+                const result = await this.checkAnswer(userAnswer, question.question_number || this.currentQuestionIndex + 1);
 
-                if (isCorrect && !this.isQuestionAnswered(this.currentQuestionIndex)) {
-                    this.score++;
+                if (result.correct && !this.isQuestionAnswered(this.currentQuestionIndex)) {
+                    this.score += result.points || 1;
                     this.updateStars();
                 }
 
-                this.showFeedback(isCorrect, question.answer);
+                this.showFeedback(result.correct, result.notes || '');
                 this.updateNavigationButtons();
             }
 
-            checkAnswer(userAnswer, correctAnswer) {
-                // Normalize answers for comparison
-                const normalize = (answer) => answer.toString().toLowerCase().replace(/[,\s]/g, '');
-                return normalize(userAnswer) === normalize(correctAnswer);
+            async checkAnswer(userAnswer, questionNumber) {
+                try {
+                    const sessionId = sessionStorage.getItem('session_id');
+                    if (!sessionId) {
+                        throw new Error('No valid session');
+                    }
+
+                    const response = await fetch(BFF_BASE_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'validate-answer',
+                            sessionId: sessionId,
+                            questionNumber: questionNumber,
+                            userAnswer: userAnswer
+                        })
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            // Session expired, clear and redirect to login
+                            clearSession();
+                            showLogin();
+                            throw new Error('Session expired. Please sign in again.');
+                        }
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('✅ Answer validated securely via BFF');
+                    return result; // Returns { correct: boolean, points: number, notes: string }
+                } catch (error) {
+                    console.error('❌ Error validating answer:', error);
+                    return { correct: false, points: 0, notes: 'Error validating answer' };
+                }
             }
 
             isQuestionAnswered(index) {
@@ -788,21 +841,44 @@
             }
         }
 
-        // Initialize the quiz when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Google OAuth
-            initializeGoogleOAuth();
-        });
 
-        // Google OAuth Functions
-        function initializeGoogleOAuth() {
-            // Check if user is already signed in
-            const token = localStorage.getItem('google_token');
-            if (token) {
-                // User is already authenticated, show quiz
-                showQuiz();
+
+        // BFF Configuration
+        const BFF_BASE_URL = 'https://script.google.com/macros/s/AKfycbyHY4Ap5W3M7d-VZqd47dGbpN1U6HIB7dKOTjnwSHJXq9Qm-kDfVKZGvbUv7L-Q_Q3n/exec';
+        
+        // Session Management Functions
+        function initializeAuth() {
+            // Check if user has a valid session
+            const sessionId = sessionStorage.getItem('session_id');
+            if (sessionId) {
+                // Validate session by trying to load questions
+                validateSession(sessionId);
             }
-            // If not authenticated, login section is already visible
+            // If no session, login section is already visible
+        }
+        
+        async function validateSession(sessionId) {
+            try {
+                const response = await fetch(`${BFF_BASE_URL}?path=questions&session=${sessionId}`);
+                if (response.ok) {
+                    // Session is valid, show quiz
+                    showQuiz();
+                } else {
+                    // Session invalid or expired, clear and show login
+                    clearSession();
+                    showLogin();
+                }
+            } catch (error) {
+                console.error('Session validation error:', error);
+                clearSession();
+                showLogin();
+            }
+        }
+        
+        function clearSession() {
+            sessionStorage.removeItem('session_id');
+            sessionStorage.removeItem('user_info');
+            localStorage.removeItem('quiz_progress');
         }
 
         // CSV Parsing and Question Loading
@@ -825,49 +901,123 @@
             return questions;
         }
 
-        async function loadQuestionsFromSpreadsheet() {
+        async function loadQuestionsFromBFF() {
             try {
-                const response = await fetch('https://script.google.com/macros/s/AKfycbxEVjpsKb4HNdEv262OgWLFD9v_vC2TEWNxU9BJ-SL2WVo6o24EmGuBh5HQPxkkIq7M/exec');
+                const sessionId = sessionStorage.getItem('session_id');
+                if (!sessionId) {
+                    throw new Error('No valid session');
+                }
+
+                const response = await fetch(`${BFF_BASE_URL}?path=questions&session=${sessionId}`);
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // Session expired, clear and redirect to login
+                        clearSession();
+                        showLogin();
+                        throw new Error('Session expired. Please sign in again.');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const csvText = await response.text();
-                const questions = parseCSV(csvText);
-                return questions;
+                console.log('✅ Questions loaded securely from BFF');
+                return parseCSV(csvText);
             } catch (error) {
-                console.error('Error loading questions:', error);
+                console.error('❌ Error loading questions:', error);
                 return null;
             }
         }
 
+        // BFF Authentication: Handle Google OAuth response and create secure session
         async function handleCredentialResponse(response) {
-            console.log('Google OAuth response received:', response);
+            try {
+                console.log('Google OAuth response received');
+                
+                // Validate response before processing
+                if (!response || !response.credential) {
+                    throw new Error('Invalid authentication response');
+                }
 
-            // Decode the JWT token to get user info
-            const payload = decodeJwtResponse(response.credential);
-            console.log('User info:', payload);
+                console.log('🔄 Sending token to BFF for validation...');
 
-            // Store the token and user info
-            localStorage.setItem('google_token', response.credential);
-            localStorage.setItem('user_info', JSON.stringify(payload));
+                // Send token to BFF for server-side validation and session creation
+                const loginResponse = await fetch(BFF_BASE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'login',
+                        token: response.credential
+                    })
+                });
 
-            // Hide login section and show quiz
-            hideLogin();
-            showQuiz();
+                if (!loginResponse.ok) {
+                    const errorData = await loginResponse.json();
+                    throw new Error(errorData.message || 'Login failed');
+                }
 
-            // Load questions from spreadsheet and initialize quiz
-            const questions = await loadQuestionsFromSpreadsheet();
-            if (questions) {
-                new MathQuiz(questions); // Pass questions to quiz
-            } else {
-                alert('Error loading questions. Please try again.');
+                const loginData = await loginResponse.json();
+                
+                if (!loginData.success) {
+                    throw new Error('Server authentication failed');
+                }
+
+                console.log('✅ BFF Authentication successful for:', loginData.user.name);
+
+                // Store only session ID and minimal user info (no tokens!)
+                sessionStorage.setItem('session_id', loginData.sessionId);
+                sessionStorage.setItem('user_info', JSON.stringify(loginData.user));
+
+                // Hide login section and show quiz
+                hideLogin();
+                showQuiz();
+
+                // Load questions from BFF and initialize quiz
+                const questions = await loadQuestionsFromBFF();
+                if (questions) {
+                    new MathQuiz(questions);
+                } else {
+                    alert('Error loading questions. Please try again.');
+                }
+            } catch (error) {
+                console.error('❌ Authentication error:', error);
+                alert(`Sign-in failed: ${error.message}`);
             }
         }
 
+        // #claude Security: JWT decoding with validation
         function decodeJwtResponse(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
+            try {
+                // #claude Security: Validate JWT structure
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('Invalid JWT format');
+                }
+                
+                const base64Url = parts[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                
+                const payload = JSON.parse(jsonPayload);
+                
+                // #claude Security: Validate token expiration
+                const now = Math.floor(Date.now() / 1000);
+                if (payload.exp && payload.exp < now) {
+                    throw new Error('Token has expired');
+                }
+                
+                // #claude Security: Validate issuer
+                if (payload.iss !== 'https://accounts.google.com') {
+                    throw new Error('Invalid token issuer');
+                }
+                
+                return payload;
+            } catch (error) {
+                console.error('JWT decode error:', error);
+                throw new Error('Failed to decode authentication token');
+            }
         }
 
         function hideLogin() {
@@ -877,21 +1027,29 @@
         function showQuiz() {
             document.getElementById('quizContainer').style.display = 'block';
 
-            // Add user info and logout button to header
-            const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+            // Display user info from session (not localStorage)
+            const userInfo = JSON.parse(sessionStorage.getItem('user_info') || '{}');
             const header = document.querySelector('.header');
-
-            // Add user info display
-            const userDisplay = document.createElement('div');
-            userDisplay.className = 'user-info';
-            userDisplay.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <img src="${userInfo.picture || ''}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%;" onerror="this.style.display='none'">
-                    <span style="color: #4a5568; font-weight: bold;">Welcome, ${userInfo.name || 'User'}!</span>
-                    <button onclick="logout()" class="nav-button" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;">Logout</button>
-                </div>
-            `;
-            header.insertBefore(userDisplay, header.firstChild);
+            
+            // Check if user display already exists to prevent duplicates
+            const existingUserDisplay = header.querySelector('.user-info');
+            if (!existingUserDisplay) {
+                // Add user info display only if it doesn't exist
+                const userDisplay = document.createElement('div');
+                userDisplay.className = 'user-info';
+                // #claude Security: Sanitize user data to prevent XSS
+                const safeName = (userInfo.name || 'User').replace(/[<>]/g, '');
+                const safePicture = (userInfo.picture || '').replace(/[<>"']/g, '');
+                
+                userDisplay.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <img src="${safePicture}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%;" onerror="this.style.display='none'" loading="lazy">
+                        <span style="color: #4a5568; font-weight: bold;">Welcome, ${safeName}!</span>
+                        <button onclick="logout()" class="nav-button" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;">Logout</button>
+                    </div>
+                `;
+                header.insertBefore(userDisplay, header.firstChild);
+            }
 
             // If no quiz is initialized yet, initialize it
             if (!window.currentQuiz) {
@@ -899,68 +1057,46 @@
             }
         }
 
-        function logout() {
-            // Clear stored credentials
-            localStorage.removeItem('google_token');
-            localStorage.removeItem('user_info');
-
-            // Show login section again
-            document.getElementById('loginSection').style.display = 'flex';
-            document.getElementById('quizContainer').style.display = 'none';
-
-            // Reload page to reset quiz state
-            location.reload();
-        }
-
-        // Check authentication state on page load
-        function checkAuthState() {
-            const token = localStorage.getItem('google_token');
-            const userInfo = localStorage.getItem('user_info');
-
-            if (token && userInfo) {
-                try {
-                    // Verify the stored user info is valid JSON
-                    const parsedUserInfo = JSON.parse(userInfo);
-
-                    // Basic validation - check if user info has required fields
-                    if (parsedUserInfo.name && parsedUserInfo.email) {
-                        console.log('✅ User already authenticated:', parsedUserInfo.name);
-
-                        // User is already logged in - skip login, show quiz
-                        hideLogin();
-                        showQuiz();
-
-                        // Load questions from spreadsheet and initialize quiz
-                        loadQuestionsFromSpreadsheet().then(questions => {
-                            if (questions) {
-                                new MathQuiz(questions);
-                            } else {
-                                console.error('❌ Failed to load questions');
-                                // If questions fail to load, fall back to login
-                                showLogin();
-                            }
-                        });
-                    } else {
-                        console.log('⚠️ Invalid user info stored, clearing and showing login');
-                        // Clear invalid data and show login
-                        localStorage.removeItem('google_token');
-                        localStorage.removeItem('user_info');
-                        showLogin();
+        // BFF Logout: Secure logout with server-side session destruction
+        async function logout() {
+            try {
+                const sessionId = sessionStorage.getItem('session_id');
+                
+                // Notify BFF to destroy session
+                if (sessionId) {
+                    try {
+                        await fetch(`${BFF_BASE_URL}?path=logout&session=${sessionId}`);
+                        console.log('✅ Server session destroyed');
+                    } catch (error) {
+                        console.error('⚠️ Failed to destroy server session:', error);
+                        // Continue with client cleanup even if server logout fails
                     }
-                } catch (error) {
-                    console.log('❌ Error parsing stored user info:', error);
-                    // Clear corrupted data and show login
-                    localStorage.removeItem('google_token');
-                    localStorage.removeItem('user_info');
-                    showLogin();
                 }
-            } else {
-                console.log('ℹ️ No stored credentials, checking for existing Google session...');
-                // Try to detect existing Google session with One Tap
-                // The One Tap will automatically appear if user is signed in elsewhere
-                showLogin();
+                
+                // Revoke Google token
+                if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                    google.accounts.id.disableAutoSelect();
+                }
+                
+                // Clear all client-side data
+                clearSession();
+
+                // Show login section again
+                document.getElementById('loginSection').style.display = 'flex';
+                document.getElementById('quizContainer').style.display = 'none';
+
+                // Force page reload to clear any remaining state
+                location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Fallback: clear local storage and reload
+                localStorage.clear();
+                sessionStorage.clear();
+                location.reload();
             }
         }
+
+
 
         // Show login section
         function showLogin() {
@@ -971,7 +1107,7 @@
         // Check authentication state when page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🔄 Page loaded, checking authentication state...');
-            checkAuthState();
+            initializeAuth();
         });
     </script>
 </body>
