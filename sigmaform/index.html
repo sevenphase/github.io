@@ -883,8 +883,10 @@
             if (sessionId) {
                 // Validate session by trying to load questions
                 validateSession(sessionId);
+            } else {
+                // No session found, show login
+                showLogin();
             }
-            // If no session, login section is already visible
         }
         
         async function validateSession(sessionId) {
@@ -1137,6 +1139,8 @@
         // Check authentication state when page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🔄 Page loaded, checking authentication state...');
+            console.log('📍 Login section element:', document.getElementById('loginSection'));
+            console.log('📍 Quiz container element:', document.getElementById('quizContainer'));
             initializeAuth();
         });
     </script>
