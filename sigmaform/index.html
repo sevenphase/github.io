@@ -6,7 +6,7 @@
     <title>Grade 6 Math Quiz</title>
 
     <!-- Content Security Policy optimized for Google Identity Services -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://accounts.gstatic.com https://ssl.gstatic.com; connect-src 'self' https://accounts.google.com https://script.google.com https://script.googleusercontent.com https://oauth2.googleapis.com; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://*.google.com https://*.gstatic.com; connect-src 'self' https://*.google.com https://*.googleapis.com https://script.google.com https://script.googleusercontent.com; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://*.google.com; frame-src https://*.google.com;">
     
     <!-- Google Identity Services - with error handling -->
     <script src="https://accounts.google.com/gsi/client" async defer onerror="handleGISLoadError()"></script>
@@ -878,30 +878,68 @@
         
         // Session Management Functions
         function initializeAuth() {
-            // Check if user has a valid session
-            const sessionId = sessionStorage.getItem('session_id');
-            if (sessionId) {
-                // Validate session by trying to load questions
-                validateSession(sessionId);
-            } else {
-                // No session found, show login
-                showLogin();
+            console.log('🚀 Initializing authentication...');
+            
+            // Test BFF connection first
+            testBFFConnection().then(() => {
+                // Check if user has a valid session
+                const sessionId = sessionStorage.getItem('session_id');
+                if (sessionId) {
+                    console.log('📋 Found existing session, validating...');
+                    validateSession(sessionId);
+                } else {
+                    console.log('🔐 No session found, showing login');
+                    showLogin();
+                }
+            }).catch(error => {
+                console.error('❌ BFF connection test failed:', error);
+                showLogin(); // Still show login even if BFF test fails
+            });
+        }
+        
+        async function testBFFConnection() {
+            try {
+                console.log('🧪 Testing BFF connection...');
+                const response = await fetch(BFF_BASE_URL);
+                console.log('📡 BFF test response:', response.status, response.statusText);
+                
+                if (response.status === 404) {
+                    console.log('✅ BFF responding (404 expected for no params)');
+                    return;
+                } else if (response.ok) {
+                    console.log('✅ BFF responding normally');
+                    return;
+                } else {
+                    throw new Error(`BFF returned ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('❌ BFF connection failed:', error);
+                throw error;
             }
         }
         
         async function validateSession(sessionId) {
             try {
-                const response = await fetch(`${BFF_BASE_URL}?path=questions&session=${sessionId}`);
+                console.log('🔍 Validating session:', sessionId);
+                const url = `${BFF_BASE_URL}?path=questions&session=${sessionId}`;
+                console.log('📡 Fetching:', url);
+                
+                const response = await fetch(url);
+                console.log('📥 Response status:', response.status, response.statusText);
+                
                 if (response.ok) {
-                    // Session is valid, show quiz
+                    console.log('✅ Session valid, showing quiz');
                     showQuiz();
                 } else {
-                    // Session invalid or expired, clear and show login
+                    console.log('❌ Session invalid, status:', response.status);
+                    const errorText = await response.text();
+                    console.log('❌ Error response:', errorText);
                     clearSession();
                     showLogin();
                 }
             } catch (error) {
-                console.error('Session validation error:', error);
+                console.error('❌ Session validation error:', error);
+                console.error('❌ Error details:', error.message);
                 clearSession();
                 showLogin();
             }
@@ -972,6 +1010,7 @@
                 console.log('🔄 Sending token to BFF for validation...');
 
                 // Send token to BFF for server-side validation and session creation
+                console.log('📡 Sending login request to BFF:', BFF_BASE_URL);
                 const loginResponse = await fetch(BFF_BASE_URL, {
                     method: 'POST',
                     headers: {
@@ -983,9 +1022,22 @@
                     })
                 });
 
+                console.log('📥 Login response status:', loginResponse.status, loginResponse.statusText);
+
                 if (!loginResponse.ok) {
-                    const errorData = await loginResponse.json();
-                    throw new Error(errorData.message || 'Login failed');
+                    const errorText = await loginResponse.text();
+                    console.error('❌ Login failed with status:', loginResponse.status);
+                    console.error('❌ Error response:', errorText);
+                    
+                    let errorMessage = 'Login failed';
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = `HTTP ${loginResponse.status}: ${errorText}`;
+                    }
+                    
+                    throw new Error(errorMessage);
                 }
 
                 const loginData = await loginResponse.json();
