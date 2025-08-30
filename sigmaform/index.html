@@ -485,7 +485,7 @@
 
             async loadQuestions() {
                 // ✅ Production Apps Script URL for SigmaForm Quiz
-                const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQ0qf4nnLZ9WDrP2qE_CKho4NQk_Q_Z3lyLZ85cyoogv5izfNTyh0FBsGKpmBHKd7P/exec';
+                const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2nqCTUaKTby08v8BWY4jDXOkI5d-S1q8lowOUGxyNtMzNGVlQJI8qhTHrMo2QEGA/exec';
                 
                 
                 console.log('🔄 STEP 1: Starting to load questions from Google Sheets...');
@@ -845,8 +845,8 @@
 
 
         // BFF Configuration  
-        // TODO: Update this URL after redeploying Apps Script with BFF code
-        const BFF_BASE_URL = 'https://script.google.com/macros/s/AKfycbzQ0qf4nnLZ9WDrP2qE_CKho4NQk_Q_Z3lyLZ85cyoogv5izfNTyh0FBsGKpmBHKd7P/exec';
+        // ✅ Updated URL for new deployment with CORS fixes
+        const BFF_BASE_URL = 'https://script.google.com/macros/s/AKfycby2nqCTUaKTby08v8BWY4jDXOkI5d-S1q8lowOUGxyNtMzNGVlQJI8qhTHrMo2QEGA/exec';
         // Handle Google Identity Services loading errors
         function handleGISLoadError() {
             console.error('❌ Google Identity Services failed to load');
