@@ -1139,9 +1139,28 @@
                 header.insertBefore(userDisplay, header.firstChild);
             }
 
-            // If no quiz is initialized yet, initialize it
+            // If no quiz is initialized yet, load questions from BFF and initialize it
             if (!window.currentQuiz) {
-                window.currentQuiz = new MathQuiz();
+                initializeQuizFromBFF();
+            }
+        }
+
+        // Initialize quiz by loading questions from BFF
+        async function initializeQuizFromBFF() {
+            try {
+                console.log('🔄 Loading questions from BFF for session validation...');
+                const questions = await loadQuestionsFromBFF();
+                console.log('📊 Questions from BFF:', questions ? questions.length : 'null/undefined', questions);
+                if (questions && questions.length > 0) {
+                    console.log('✅ Starting quiz with', questions.length, 'questions');
+                    window.currentQuiz = new MathQuiz(questions);
+                } else {
+                    console.error('❌ No questions received from BFF');
+                    alert('Error loading questions. Please try again.');
+                }
+            } catch (error) {
+                console.error('❌ Error initializing quiz:', error);
+                alert('Error loading quiz. Please try again.');
             }
         }
 
