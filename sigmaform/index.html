@@ -1047,7 +1047,7 @@
                     throw new Error('Server authentication failed');
                 }
 
-                console.log('✅ BFF Authentication successful for:', loginData.ucser.name);
+                console.log('✅ BFF Authentication successful for:', loginData.user.name);
 
                 // Store only session ID and minimal user info (no tokens!)
                 sessionStorage.setItem('session_id', loginData.sessionId);
