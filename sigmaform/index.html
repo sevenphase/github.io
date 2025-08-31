@@ -1059,9 +1059,12 @@
 
                 // Load questions from BFF and initialize quiz
                 const questions = await loadQuestionsFromBFF();
-                if (questions) {
+                console.log('📊 Questions from BFF:', questions ? questions.length : 'null/undefined', questions);
+                if (questions && questions.length > 0) {
+                    console.log('✅ Starting quiz with', questions.length, 'questions');
                     new MathQuiz(questions);
                 } else {
+                    console.error('❌ No questions received from BFF');
                     alert('Error loading questions. Please try again.');
                 }
             } catch (error) {
