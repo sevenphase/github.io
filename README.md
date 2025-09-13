@@ -1,2 +1,2 @@
 # Sevenphase Systems
-Sevenphase Systems Website
+Sevenphase Systems AI project
