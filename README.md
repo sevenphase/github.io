@@ -1,2 +1,3 @@
 # Sevenphase Systems
-Sevenphase Systems AI project
+Sevenphase Systems - AI website project.
+Sooo much better than Netscape Composer
