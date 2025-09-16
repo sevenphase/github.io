@@ -1,4 +1,4 @@
-// Vercel API function for answer validation - reads session from HttpOnly cookies
+// Vercel API function for answer validation - uses Google Sheets API with Service Account
 import { verifyJWT } from './login.js';
 
 // Configuration
@@ -44,59 +44,102 @@ function validateSessionFromCookie(req) {
   }
 }
 
-// Fetch answers from Google Sheets
-async function fetchAnswersFromSheets() {
+// Get Google OAuth2 access token using service account
+async function getGoogleAccessToken() {
   try {
-    // Use Google Sheets public CSV export
-    const url = `https://docs.google.com/spreadsheets/d/${ANSWERS_SHEET_ID}/export?format=csv`;
-    const response = await fetch(url);
+    const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const projectId = process.env.GOOGLE_PROJECT_ID;
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch answers from Google Sheets: ${response.status}`);
+    if (!serviceAccountEmail || !privateKey || !projectId) {
+      throw new Error('Missing Google Service Account environment variables');
     }
 
-    const csvData = await response.text();
-    return csvData;
+    // Create JWT for Google OAuth2
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      iss: serviceAccountEmail,
+      scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: now + 3600,
+      iat: now
+    };
+
+    // Sign JWT using private key
+    const crypto = require('crypto');
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(`${header}.${payloadB64}`);
+    const signature = sign.sign(privateKey, 'base64url');
+
+    const jwt = `${header}.${payloadB64}.${signature}`;
+
+    // Exchange JWT for access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.text();
+      throw new Error(`Token exchange failed: ${error}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    return tokenData.access_token;
+  } catch (error) {
+    console.error('Error getting Google access token:', error);
+    throw error;
+  }
+}
+
+// Fetch answers from private Google Sheets using API
+async function fetchAnswersFromSheets() {
+  try {
+    const accessToken = await getGoogleAccessToken();
+
+    // Use Google Sheets API to get values
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${ANSWERS_SHEET_ID}/values/Sheet1`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to fetch from Google Sheets API: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.values || [];
   } catch (error) {
     console.error('Error fetching answers from Google Sheets:', error);
     throw error;
   }
 }
 
-// Parse CSV data to find answer for specific question
-function parseAnswersCSV(csvData, questionNumber) {
-  const lines = csvData.split('\n');
-
+// Parse answers data to find answer for specific question
+function parseAnswersData(answersData, questionNumber) {
   // Skip header row
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    // Parse CSV line (handle quoted fields)
-    const fields = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let j = 0; j < line.length; j++) {
-      const char = line[j];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        fields.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    fields.push(current.trim());
+  for (let i = 1; i < answersData.length; i++) {
+    const row = answersData[i];
+    if (!row || row.length === 0) continue;
 
     // Check if this is the question we're looking for
-    const qNum = fields[0]?.replace(/"/g, '');
+    const qNum = row[0];
     if (qNum == questionNumber) {
       return {
-        correctAnswer: fields[1]?.replace(/"/g, ''),
-        points: parseInt(fields[2]?.replace(/"/g, '')) || 1,
-        notes: fields[3]?.replace(/"/g, '') || ''
+        correctAnswer: row[1] || '',
+        points: parseInt(row[2]) || 1,
+        notes: row[3] || ''
       };
     }
   }
@@ -132,12 +175,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing questionNumber or userAnswer' });
     }
 
-    // Fetch answers from Google Sheets
-    console.log(`Validating answer for question ${questionNumber}...`);
+    // Fetch answers from private Google Sheets using service account
+    console.log(`Validating answer for question ${questionNumber} using Google Sheets API...`);
     const answersData = await fetchAnswersFromSheets();
 
     // Find the correct answer for this question
-    const answerInfo = parseAnswersCSV(answersData, questionNumber);
+    const answerInfo = parseAnswersData(answersData, questionNumber);
 
     if (!answerInfo) {
       throw new Error(`Question ${questionNumber} not found in answers sheet`);
@@ -160,7 +203,7 @@ export default async function handler(req, res) {
       timestamp: new Date().toISOString()
     };
 
-    console.log(`Answer validation result: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
+    console.log(`Answer validation result: ${isCorrect ? 'CORRECT' : 'INCORRECT'} for question ${questionNumber}`);
     return res.status(200).json(response);
 
   } catch (error) {
