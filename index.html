@@ -1,1221 +1,633 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/15/25:19:50:00 - Migrated to Vercel Backend -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grade 6 Math Quiz</title>
-
-    <!-- Content Security Policy optimized for Google Identity Services -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://*.google.com https://*.gstatic.com; connect-src 'self' https://*.google.com https://*.googleapis.com https://script.google.com https://script.googleusercontent.com; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://*.google.com; frame-src https://*.google.com;">
-    
-    <!-- Google Identity Services - with error handling -->
-    <script src="https://accounts.google.com/gsi/client" async defer onerror="handleGISLoadError()"></script>
-
+    <title>Sevenphase Systems - Cloud Infrastructure & Systems Administration</title>
     <style>
+        /* Reset and base styles */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
         body {
-            font-family: 'Comic Sans MS', cursive, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ffff;
+            overflow-x: hidden;
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
-
-        .quiz-container {
-            background: white;
-            border-radius: 25px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
-            max-width: 600px;
-            width: 90%;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .quiz-container::before {
-            content: '';
-            position: absolute;
+        /* Static background grid */
+        .grid-background {
+            position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcf7f, #4d96ff, #9c88ff);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .title {
-            font-size: 2.5em;
-            color: #4a5568;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .progress-bar {
-            background: #e2e8f0;
-            height: 12px;
-            border-radius: 6px;
-            overflow: hidden;
-            margin: 20px 0;
-        }
-
-        .progress-fill {
-            background: linear-gradient(90deg, #ff6b6b, #4d96ff);
-            height: 100%;
-            width: 0%;
-            transition: width 0.5s ease;
-        }
-
-        .score-display {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .star-container {
-            display: flex;
-            gap: 5px;
-        }
-
-        .star {
-            font-size: 2em;
-            transition: all 0.3s ease;
-            filter: grayscale(100%);
-        }
-
-        .star.earned {
-            filter: grayscale(0%);
-            transform: scale(1.2);
-            animation: sparkle 0.6s ease;
-        }
-
-        @keyframes sparkle {
-            0%, 100% { transform: scale(1.2); }
-            50% { transform: scale(1.4) rotate(10deg); }
-        }
-
-        .question-card {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin: 20px 0;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        }
-
-        .question-number {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .question-text {
-            font-size: 1.4em;
-            line-height: 1.4;
-        }
-
-        .topic-badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.3);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            margin-top: 10px;
-        }
-
-        .answer-section {
-            margin: 30px 0;
-        }
-
-        .answer-input {
             width: 100%;
-            padding: 15px;
-            border: 3px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 1.2em;
-            outline: none;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;            
+            z-index: -1;
+        }
+        /* Navigation styles */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #00ffff;
+            z-index: 1000;
             transition: all 0.3s ease;
         }
-
-        .answer-input:focus {
-            border-color: #4d96ff;
-            box-shadow: 0 0 0 3px rgba(77, 150, 255, 0.2);
-        }
-
-        .multiple-choice {
-            display: grid;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .choice-button {
-            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: left;
-        }
-
-        .choice-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .choice-button.selected {
-            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-            transform: scale(1.02);
-        }
-
-        .controls {
+        .nav-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
-
-        .nav-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff;
+        }
+        .nav-links {
             display: flex;
-            align-items: center;
-            gap: 8px;
+            list-style: none;
+            gap: 2rem;
         }
-
-        .nav-button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        .nav-links li {
+            position: relative;
         }
-
-        .nav-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .submit-button {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 1.2em;
-            font-weight: bold;
-            cursor: pointer;
+        .nav-links a {
+            color: #00ffff;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid transparent;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-
-        .submit-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-        }
-
-        .feedback {
-            margin-top: 20px;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            font-size: 1.2em;
-            font-weight: bold;
-            transition: all 0.5s ease;
-        }
-
-        .feedback.correct {
-            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-            color: #2d5016;
-        }
-
-        .feedback.incorrect {
-            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-            color: #c53030;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #4a5568;
-            font-size: 1.2em;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #e2e8f0;
-            border-top: 4px solid #4d96ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .question-counter {
-            font-size: 1.1em;
-            color: #666;
-            font-weight: bold;
-        }
-
-        /* New styles for login section */
-        .login-section {
+        .nav-links a::before {
+            content: '';
             position: absolute;
             top: 0;
-            left: 0;
+            left: -100%;
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.7); /* Semi-transparent overlay */
-            z-index: 1000;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+            z-index: -1;
+            pointer-events: none;
         }
-
-        .login-container {
-            background: white;
-            border-radius: 25px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            padding: 40px;
-            max-width: 600px;
-            width: 90%;
-            text-align: center;
+        .nav-links a:hover::before {
+            left: 100%;
         }
-
-        .login-title {
-            font-size: 2.5em;
-            color: #4a5568;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        .nav-links a:hover {
+            border-color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            transform: translateY(-2px);
         }
-
-        .login-subtitle {
-            font-size: 1.2em;
-            color: #666;
-            margin-bottom: 30px;
+        .nav-links a.active {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: #00ffff;
         }
-
-        .user-info {
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 2px solid #e2e8f0;
-        }
-
-        .user-info img {
-            border: 2px solid #4d96ff;
-        }
-
-        .user-info button {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9em;
+        /* Mobile menu toggle */
+        .mobile-toggle {
+            display: none;
+            flex-direction: column;
             cursor: pointer;
+            gap: 3px;
+        }
+        .mobile-toggle span {
+            width: 25px;
+            height: 3px;
+            background: #00ffff;
             transition: all 0.3s ease;
         }
-
-        .user-info button:hover {
+        /* Main content container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            margin-top: 80px;
+        }
+        /* Section styles */
+        .section {
+            min-height: 80vh;
+            padding: 4rem 0;
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Hero section */
+        .hero {
+            text-align: center;
+            padding: 6rem 0;
+        }
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #00ffff, #ff0080);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 30px #00ffff) drop-shadow(0 0 40px #ff0080);
+        }
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(45deg, #00ffff, #ff0080);
+            color: #000;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, rgba(255, 0, 128, 0.7), rgba(0, 255, 255, 0.7));
+            transition: left 0.3s ease;
+        }
+        .cta-button:hover::before {
+            left: 0;
+        }
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 255, 255, 0.3);
+        }
+        /* Content sections */
+        .content-header {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: #00ffff;
+            border-bottom: 2px solid #00ffff;
+            padding-bottom: 1rem;
+        }
+        .content-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 2rem;
+            color: #b0b0b0;
+        }
+        /* system section with tabs */
+        .system-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .tab-button {
+            padding: 0.8rem 1.5rem;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 5px;
+        }
+        .tab-button:hover {
+            background: rgba(0, 255, 255, 0.2);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .tab-button.active {
+            background: #00ffff;
+            color: #000;
+        }
+        .tab-content {
+            display: none;
+            padding: 2rem;
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+        .tab-content.active {
+            display: block;
+            animation: slideIn 0.3s ease-in-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        /* Contact form */
+        .contact-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #00ffff;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            border-radius: 5px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            background: rgba(0, 255, 255, 0.15);
+        }
+        .submit-btn {
+            background: linear-gradient(45deg, #00ffff, #ff0080);
+            color: #000;
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+        }
+        /* Skills grid */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .skill-card {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            padding: 1.5rem;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .skill-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 255, 255, 0.2);
+            border-color: #00ffff;
+        }
+        .skill-card h3 {
+            color: #00ffff;
+            margin-bottom: 1rem;
+        }
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .mobile-toggle {
+                display: flex;
+            }
+            .nav-links {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: rgba(0, 0, 0, 0.95);
+                flex-direction: column;
+                padding: 1rem;
+                transform: translateY(-100%);
+                opacity: 0;
+                transition: all 0.3s ease;
+                pointer-events: none;
+            }
+            .nav-links.active {
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: all;
+            }
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            .container {
+                padding: 0 1rem;
+            }
+            .system-tabs {
+                flex-direction: column;
+            }
+            .tab-button {
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Google OAuth Login Section -->
-    <div id="loginSection" class="login-section" style="display: none;">
-        <div class="login-container">
-            <h1 class="login-title">🧮 Math Quiz Adventure! 🌟</h1>
-            <p class="login-subtitle">Sign in with Google to start your math adventure!</p>
-            <!-- #claude Security: Configure Google Identity Services with security best practices -->
-            <div id="g_id_onload"
-                 data-client_id="141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com"
-                 data-context="signin"
-                 data-ux_mode="popup"
-                 data-callback="handleCredentialResponse"
-                 data-auto_prompt="false"
-                 data-cancel_on_tap_outside="false"
-                 data-use_fedcm_for_prompt="true"
-                 data-one_tap="true"
-                 data-prompt_parent_id="loginSection">
+    <!-- Static background grid -->
+    <div class="grid-background"></div>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <!-- Logo without glitch effect -->
+            <div class="logo" onclick="showSection('home')" style="cursor: pointer;">SEVENPHASE</div>
+            
+            <!-- Mobile menu toggle -->
+            <div class="mobile-toggle" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
             </div>
-            <div class="g_id_signin"
-                 data-type="standard"
-                 data-shape="rectangular"
-                 data-theme="outline"
-                 data-text="signin_with"
-                 data-size="large"
-                 data-logo_alignment="left">
-            </div>
+            
+            <!-- Navigation links -->
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#" onclick="showSection('home')" class="active">Home</a></li>
+                <li><a href="#" onclick="showSection('about')">About</a></li>
+                <li><a href="#" onclick="showSection('systems')">Systems</a></li>
+                <li><a href="#" onclick="showSection('contact')">Contact</a></li>
+            </ul>
         </div>
-    </div>
-
-    <div class="quiz-container" id="quizContainer" style="display: none;">
-        <div class="header">
-            <h1 class="title">🧮 Math Quiz Adventure! 🌟</h1>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
+    </nav>
+    <!-- Main container -->
+    <div class="container">
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="hero">
+                <h1>SEVENPHASE SYSTEMS</h1>
+                <p>Advanced cloud infrastructure and systems administration solutions powered by over two decades of Unix expertise</p>
+                <a href="#" onclick="showSection('about')" class="cta-button">
+                    <span>Explore Our Services</span>
+                </a>
             </div>
-            <div class="score-display">
-                <span style="font-size: 1.2em; font-weight: bold; color: #4a5568;">Score:</span>
-                <div class="star-container" id="starContainer">
-                    <span class="star">⭐</span>
-                    <span class="star">⭐</span>
-                    <span class="star">⭐</span>
-                    <span class="star">⭐</span>
-                    <span class="star">⭐</span>
+        </section>
+        <!-- About Section -->
+        <section id="about" class="section">
+            <h2 class="content-header">About Sevenphase Systems</h2>
+            <div class="content-text">
+                <p>Sevenphase Systems is a specialized consulting firm delivering cutting-edge AWS cloud infrastructure and Linux systems administration solutions. With over two decades of professional experience in Unix-based environments including Linux, Solaris, and FreeBSD, we provide comprehensive infrastructure design, security implementation, administration, networking, and systems support.</p>
+                
+                <p>Our team holds industry-recognized certifications from CompTIA in cybersecurity and AWS cloud computing, backed by nearly five years of hands-on experience architecting AWS Cloud solutions and seamlessly integrating on-premises resources with cloud infrastructure.</p>
+                
+                <p>We deliver tailored solutions for complex troubleshooting challenges and systems automation, leveraging both proven open-source technologies and custom-engineered solutions. Our development expertise spans multiple programming languages including Bash, JavaScript, Python, C, PHP, Java, and Perl, enabling us to create robust, scalable solutions that meet your unique business requirements.</p>
+            </div>
+            
+            <!-- Skills grid -->
+            <div class="skills-grid">
+                <div class="skill-card">
+                    <h3>Cloud Infrastructure</h3>
+                    <p>AWS certified with expertise in designing scalable, secure cloud environments and hybrid infrastructure integration.</p>
                 </div>
-                <span id="scoreText" style="font-size: 1.2em; font-weight: bold; color: #4a5568;">0/5</span>
+                <div class="skill-card">
+                    <h3>Systems Administration</h3>
+                    <p>Two decades of Unix/Linux experience spanning multiple distributions and enterprise environments.</p>
+                </div>
+                <div class="skill-card">
+                    <h3>Security & Compliance</h3>
+                    <p>CompTIA Security+ certified with deep expertise in cybersecurity frameworks and compliance requirements.</p>
+                </div>
+                <div class="skill-card">
+                    <h3>Automation & Development</h3>
+                    <p>Custom solution development using modern programming languages and infrastructure-as-code practices.</p>
+                </div>
             </div>
-        </div>
-
-        <div id="loadingScreen" class="loading">
-            <div class="spinner"></div>
-            <div>Loading your math adventure...</div>
-        </div>
-
-        <div id="quizContent" style="display: none;">
-            <div class="question-counter">
-                <span id="questionCounter">Question 1 of 5</span>
+        </section>
+        <!-- Systems Section -->
+        <section id="systems" class="section">
+            <h2 class="content-header">Systems Solutions</h2>
+            
+            <!-- Systems category tabs -->
+            <div class="system-tabs">
+                <button class="tab-button active" onclick="showTab('security')">Security</button>
+                <button class="tab-button" onclick="showTab('automation')">Automation</button>
+                <button class="tab-button" onclick="showTab('mobile')">Mobile Apps</button>
+                <button class="tab-button" onclick="showTab('web')">Web Solutions</button>
             </div>
-
-            <div class="question-card">
-                <div class="question-number" id="questionNumber">Question 1</div>
-                <div class="question-text" id="questionText">Loading question...</div>
-                <div class="topic-badge" id="topicBadge">Topic</div>
+            <!-- Security tab content -->
+            <div id="security" class="tab-content active">
+                <h3>Cybersecurity Solutions</h3>
+                <p>Comprehensive security frameworks designed to protect your infrastructure from modern threats. Our security solutions include:</p>
+                <ul style="margin-top: 1rem; padding-left: 2rem; color: #b0b0b0;">
+                    <li>Vulnerability assessment and infrastructure hardening</li>
+                    <li>Security monitoring and incident response systems</li>
+                    <li>Compliance framework implementation (SOC 2, HIPAA, PCI DSS)</li>
+                    <li>Identity and access management (IAM) solutions</li>
+                    <li>Network security architecture and firewall configuration</li>
+                    <li>Security automation and orchestration tools</li>
+                    <li>Consultation for policy and standards development</li>
+                </ul>
             </div>
-
-            <div class="answer-section">
-                <input type="text" class="answer-input" id="textAnswer" placeholder="Type your answer here..." style="display: none;">
-                <div class="multiple-choice" id="multipleChoice" style="display: none;"></div>
+            <!-- Automation tab content -->
+            <div id="automation" class="tab-content">
+                <h3>Infrastructure Automation</h3>
+                <p>Streamline your operations with intelligent automation solutions that reduce manual overhead and improve reliability:</p>
+                <ul style="margin-top: 1rem; padding-left: 2rem; color: #b0b0b0;">
+                    <li>Infrastructure as Code (IaC) with Terraform</li>
+                    <li>CI/CD pipeline development and optimization</li>
+                    <li>Configuration management with Ansible</li>
+                    <li>Automated monitoring and alerting systems</li>
+                    <li>Container orchestration with Docker</li>
+                    <li>Custom scripting and workflow automation</li>
+                </ul>
             </div>
-
-            <div class="controls">
-                <button class="nav-button" id="prevButton" disabled>
-                    ← Previous
-                </button>
-                <button class="submit-button" id="submitButton">Submit Answer</button>
-                <button class="nav-button" id="nextButton" disabled>
-                    Next →
-                </button>
+            <!-- Mobile Apps tab content -->
+            <div id="mobile" class="tab-content">
+                <h3>Mobile Application Development</h3>
+                <p>We prioritize web-based solutions for their broad mobile compatibility, though we can develop native apps when they're the best fit for your needs</p> 
+                <ul style="margin-top: 1rem; padding-left: 2rem; color: #b0b0b0;">
+                    <li>Android application development</li>
+                    <li>API development for mobile backend services</li>
+                    <li>Kotlin and Jetpack Compose</li>
+                </ul>
             </div>
-
-            <div id="feedback" class="feedback" style="display: none;"></div>
-        </div>
+            <!-- Web Solutions tab content -->
+            <div id="web" class="tab-content">
+                <h3>Web Development & Solutions</h3>
+                <p>Modern web applications and platforms built with scalability and security in mind:</p>
+                <ul style="margin-top: 1rem; padding-left: 2rem; color: #b0b0b0;">
+                    <li>Full-stack web application development</li>
+                    <li>Progressive Web Apps (PWA) and single-page (SPA) applications</li>
+                    <li>OIDC authentication integrations</li>
+                    <li>RESTful API design and microservices architecture</li>
+                    <li>Web security analysis, implementation, network configuration</li>
+                </ul>
+            </div>
+        </section>
+        <!-- Contact Section -->
+        <section id="contact" class="section">
+            <h2 class="content-header">Contact Us</h2>
+            <div class="content-text">
+                <p>Ready to transform your infrastructure? Get in touch with our team to discuss your project requirements and discover how Sevenphase Systems can accelerate your digital transformation.</p>
+            </div>
+            
+            <!-- Contact form -->
+            <form class="contact-form" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label for="name">Name *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="company">Company</label>
+                    <input type="text" id="company" name="company">
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">Project Details *</label>
+                    <textarea id="message" name="message" rows="6" placeholder="Tell us about your project requirements..." required></textarea>
+                </div>
+                
+                <button type="submit" class="submit-btn">Send Message</button>
+            </form>
+        </section>
     </div>
-
     <script>
-        class MathQuiz {
-            constructor(questions = null) {
-                this.questions = questions || [];
-                this.currentQuestionIndex = 0;
-                this.score = 0;
-                this.answers = {};
-                this.selectedChoice = null;
-                
-                if (questions) {
-                    // Questions provided, initialize directly
-                    this.initWithQuestions();
-                } else {
-                    // No questions provided, load from Apps Script
-                this.init();
-                }
-            }
-
-            initWithQuestions() {
-                // Questions already loaded, initialize directly
-                this.setupEventListeners();
-                this.displayQuestion();
-                document.getElementById('loadingScreen').style.display = 'none';
-                document.getElementById('quizContent').style.display = 'block';
-            }
-
-            async init() {
-                try {
-                    await this.loadQuestions();
-                    this.setupEventListeners();
-                    this.displayQuestion();
-                    document.getElementById('loadingScreen').style.display = 'none';
-                    document.getElementById('quizContent').style.display = 'block';
-                } catch (error) {
-                    document.getElementById('loadingScreen').innerHTML = `
-                        <div style="color: #e53e3e; text-align: center; padding: 20px;">
-                            <div style="font-size: 3em; margin-bottom: 15px;">📚</div>
-                            <h2 style="color: #4a5568; margin-bottom: 15px;">Quiz Loading Issue</h2>
-                            <p style="color: #666; margin-bottom: 20px; font-size: 1.1em;">
-                                We're having trouble connecting to the quiz database. This usually resolves quickly.
-                            </p>
-                            <div style="background: #f7fafc; border-radius: 10px; padding: 15px; margin: 20px 0;">
-                                <p style="color: #4a5568; font-size: 0.9em; line-height: 1.4;">
-                                    <strong>What you can try:</strong><br>
-                                    • Refresh this page in a few seconds<br>
-                                    • Check your internet connection<br>
-                                    • Contact your teacher if the issue persists
-                                </p>
-                            </div>
-                            <button onclick="location.reload()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 25px; font-size: 1.1em; cursor: pointer; margin-top: 15px;">
-                                Try Again
-                            </button>
-                        </div>
-                    `;
-                }
-            }
-
-            async loadQuestions() {
-                // ✅ Production Apps Script URL for SigmaForm Quiz
-                const APPS_SCRIPT_URL = 'https://github-io-topaz-one.vercel.app/api/questions';
-                
-                
-                console.log('🔄 STEP 1: Starting to load questions from Google Sheets...');
-                console.log('🔗 STEP 2: Using Apps Script URL:', APPS_SCRIPT_URL);
-                
-                // First, let's test if we can reach the URL at all
-                console.log('🧪 TESTING: Can we reach the Apps Script URL?');
-                try {
-                    console.log('📡 STEP 3: Making fetch request...');
-                    const response = await fetch(APPS_SCRIPT_URL, {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-cache'
-                    });
-                    
-                    console.log('📊 STEP 4: Response received');
-                    console.log('📊 STEP 4a: Response status:', response.status);
-                    console.log('📊 STEP 4b: Response ok:', response.ok);
-                    console.log('📊 STEP 4c: Response type:', response.type);
-                    console.log('📊 STEP 4d: Response url:', response.url);
-                    
-                    if (!response.ok) {
-                        console.error('❌ Response not OK:', response.status, response.statusText);
-                        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
-                    }
-                    
-                    console.log('📝 STEP 5: Getting response text...');
-                    const csvText = await response.text();
-                    console.log('📝 STEP 6: CSV text received, length:', csvText.length);
-                    console.log('📝 STEP 6b: First 300 characters:', csvText.substring(0, 300));
-                    console.log('📝 STEP 6c: CSV text type:', typeof csvText);
-                    
-                    if (!csvText || csvText.length === 0) {
-                        throw new Error('Empty response from Apps Script - check your script');
-                    }
-                    
-                    console.log('🔍 STEP 7: Parsing CSV...');
-                    this.questions = this.parseCSV(csvText);
-                    console.log('✅ STEP 8: Parsed questions count:', this.questions.length);
-                    
-                    if (this.questions.length > 0) {
-                        console.log('✅ STEP 8b: First question sample:', this.questions[0]);
-                    }
-                    
-                    if (this.questions.length === 0) {
-                        throw new Error('No questions found in spreadsheet - check CSV format and parsing');
-                    }
-                    
-                    console.log('🎉 SUCCESS: Questions loaded successfully!');
-                    
-                } catch (error) {
-                    console.error('❌ DETAILED ERROR:', error);
-                    console.error('❌ ERROR name:', error.name);
-                    console.error('❌ ERROR message:', error.message);
-                    
-                    // Provide specific troubleshooting based on error type
-                    if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
-                        console.log('🔧 NETWORK ERROR TROUBLESHOOTING:');
-                        console.log('1. Check if your Apps Script is deployed as a Web App');
-                        console.log('2. Verify "Anyone" access is set in deployment');
-                        console.log('3. Try accessing this URL directly in a new browser tab:', APPS_SCRIPT_URL);
-                        
-                        throw new Error(`Network error accessing Apps Script. Please:
-                        1. Verify your Apps Script is deployed as a Web App
-                        2. Set access to "Anyone" in the deployment settings
-                        3. Test the URL directly: ${APPS_SCRIPT_URL}`);
-                    } else {
-                        throw error;
-                    }
-                }
-            }
-
-            parseCSV(csvText) {
-                console.log('🔍 PARSING CSV - Raw text length:', csvText.length);
-                
-                const lines = csvText.split('\n').filter(line => line.trim());
-                console.log('🔍 PARSING CSV - Total lines after filtering:', lines.length);
-                console.log('🔍 PARSING CSV - First few lines:', lines.slice(0, 3));
-                
-                const questions = [];
-                
-                // Skip header row (starts at index 1)
-                for (let i = 1; i < lines.length; i++) {
-                    console.log(`🔍 PARSING LINE ${i}:`, lines[i]);
-                    
-                    try {
-                        // Handle CSV parsing with potential commas in quoted fields
-                        const columns = this.parseCSVLine(lines[i]);
-                        console.log(`🔍 PARSED COLUMNS ${i}:`, columns);
-                        
-                        if (columns.length >= 5) {
-                            const question = {
-                                number: parseInt(columns[0]) || i,
-                                question: columns[1]?.trim() || '',
-                                topic: columns[2]?.trim() || '',
-                                answerType: columns[3]?.trim() || 'Short Answer',
-                                answer: columns[4]?.trim() || ''
-                            };
-                            
-                            console.log(`📝 QUESTION OBJECT ${i}:`, question);
-                            
-                            // Handle Multiple Choice questions
-                            if (question.answerType === 'Multiple Choice') {
-                                console.log(`🎯 PROCESSING MULTIPLE CHOICE for question ${i}`);
-                                const answerText = question.answer;
-                                
-                                // Extract choices (look for A), B), C), D) pattern)
-                                const choiceMatches = answerText.match(/[A-D]\)[^A-D\[\]]+/g);
-                                if (choiceMatches) {
-                                    question.choices = choiceMatches.map(choice => choice.trim());
-                                    console.log(`🎯 FOUND CHOICES:`, question.choices);
-                                }
-                                
-                                // Extract correct answer (look for [Correct: X] pattern)
-                                const correctMatch = answerText.match(/\[Correct:\s*([A-D])\]/i);
-                                if (correctMatch) {
-                                    question.answer = correctMatch[1].toUpperCase();
-                                    console.log(`🎯 CORRECT ANSWER:`, question.answer);
-                                } else {
-                                    // Default to A if no correct answer specified
-                                    question.answer = 'A';
-                                    console.log(`⚠️ NO CORRECT ANSWER FOUND, defaulting to A`);
-                                }
-                            }
-                            
-                            questions.push(question);
-                            console.log(`✅ ADDED QUESTION ${question.number} to array`);
-                        } else {
-                            console.log(`⚠️ SKIPPING LINE ${i} - insufficient columns (${columns.length})`);
-                        }
-                    } catch (error) {
-                        console.warn(`❌ Error parsing line ${i}:`, lines[i], error);
-                    }
-                }
-                
-                console.log('✅ FINAL QUESTIONS ARRAY:', questions);
-                return questions;
-            }
-
-            parseCSVLine(line) {
-                const result = [];
-                let current = '';
-                let inQuotes = false;
-                
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
-                    
-                    if (char === '"') {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        result.push(current);
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                
-                result.push(current); // Don't forget the last column
-                return result;
-            }
-
-            setupEventListeners() {
-                document.getElementById('submitButton').addEventListener('click', () => this.submitAnswer());
-                document.getElementById('prevButton').addEventListener('click', () => this.previousQuestion());
-                document.getElementById('nextButton').addEventListener('click', () => this.nextQuestion());
-                
-                document.getElementById('textAnswer').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.submitAnswer();
-                });
-            }
-
-            displayQuestion() {
-                const question = this.questions[this.currentQuestionIndex];
-                
-                document.getElementById('questionNumber').textContent = `Question ${question.number}`;
-                document.getElementById('questionText').textContent = question.question;
-                document.getElementById('topicBadge').textContent = question.topic;
-                document.getElementById('questionCounter').textContent = `Question ${this.currentQuestionIndex + 1} of ${this.questions.length}`;
-                
-                this.updateProgress();
-                this.setupAnswerInput(question);
-                this.updateNavigationButtons();
-                this.hideFeedback();
-            }
-
-            setupAnswerInput(question) {
-                const textInput = document.getElementById('textAnswer');
-                const multipleChoice = document.getElementById('multipleChoice');
-                
-                if (question.answerType === 'Multiple Choice') {
-                    textInput.style.display = 'none';
-                    multipleChoice.style.display = 'grid';
-                    multipleChoice.innerHTML = '';
-                    
-                    question.choices.forEach((choice, index) => {
-                        const button = document.createElement('button');
-                        button.className = 'choice-button';
-                        button.textContent = choice;
-                        button.addEventListener('click', () => this.selectChoice(index, button));
-                        multipleChoice.appendChild(button);
-                    });
-                } else {
-                    textInput.style.display = 'block';
-                    multipleChoice.style.display = 'none';
-                    textInput.value = this.answers[this.currentQuestionIndex] || '';
-                    textInput.focus();
-                }
-                
-                this.selectedChoice = null;
-            }
-
-            selectChoice(index, button) {
-                document.querySelectorAll('.choice-button').forEach(btn => btn.classList.remove('selected'));
-                button.classList.add('selected');
-                this.selectedChoice = index;
-            }
-
-            async submitAnswer() {
-                const question = this.questions[this.currentQuestionIndex];
-                let userAnswer;
-                
-                if (question.answerType === 'Multiple Choice') {
-                    if (this.selectedChoice === null) {
-                        alert('Please select an answer!');
-                        return;
-                    }
-                    userAnswer = String.fromCharCode(65 + this.selectedChoice); // Convert to A, B, C, D
-                } else {
-                    userAnswer = document.getElementById('textAnswer').value.trim();
-                    if (!userAnswer) {
-                        alert('Please enter an answer!');
-                        return;
-                    }
-                }
-                
-                this.answers[this.currentQuestionIndex] = userAnswer;
-                
-                // Use BFF to validate answer securely
-                const result = await this.checkAnswer(userAnswer, question.question_number || this.currentQuestionIndex + 1);
-
-                if (result.correct && !this.isQuestionAnswered(this.currentQuestionIndex)) {
-                    this.score += result.points || 1;
-                    this.updateStars();
-                }
-                
-                this.showFeedback(result.correct, result.notes || '');
-                this.updateNavigationButtons();
-            }
-
-            async checkAnswer(userAnswer, questionNumber) {
-                try {
-                    const sessionId = sessionStorage.getItem('session_id');
-                    if (!sessionId) {
-                        throw new Error('No valid session');
-                    }
-
-                    const response = await fetch(`${BFF_BASE_URL}/validate`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            sessionId: sessionId,
-                            questionNumber: questionNumber,
-                            userAnswer: userAnswer
-                        })
-                    });
-
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            // Session expired, clear and redirect to login
-                            clearSession();
-                            showLogin();
-                            throw new Error('Session expired. Please sign in again.');
-                        }
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    console.log('✅ Answer validated securely via BFF');
-                    return result; // Returns { correct: boolean, points: number, notes: string }
-                } catch (error) {
-                    console.error('❌ Error validating answer:', error);
-                    return { correct: false, points: 0, notes: 'Error validating answer' };
-                }
-            }
-
-            isQuestionAnswered(index) {
-                return this.answers.hasOwnProperty(index);
-            }
-
-            showFeedback(isCorrect, correctAnswer) {
-                const feedback = document.getElementById('feedback');
-                feedback.style.display = 'block';
-                
-                if (isCorrect) {
-                    feedback.className = 'feedback correct';
-                    feedback.innerHTML = '🎉 Excellent! You got it right! ⭐';
-                } else {
-                    feedback.className = 'feedback incorrect';
-                    feedback.innerHTML = `❌ Not quite right. The correct answer is: ${correctAnswer}`;
-                }
-            }
-
-            hideFeedback() {
-                document.getElementById('feedback').style.display = 'none';
-            }
-
-            updateStars() {
-                const stars = document.querySelectorAll('.star');
-                stars.forEach((star, index) => {
-                    if (index < this.score) {
-                        star.classList.add('earned');
-                    }
-                });
-                
-                document.getElementById('scoreText').textContent = `${this.score}/${this.questions.length}`;
-            }
-
-            updateProgress() {
-                const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
-                document.getElementById('progressFill').style.width = `${progress}%`;
-            }
-
-            updateNavigationButtons() {
-                const prevButton = document.getElementById('prevButton');
-                const nextButton = document.getElementById('nextButton');
-                const submitButton = document.getElementById('submitButton');
-                
-                prevButton.disabled = this.currentQuestionIndex === 0;
-                nextButton.disabled = this.currentQuestionIndex === this.questions.length - 1;
-                
-                if (this.isQuestionAnswered(this.currentQuestionIndex)) {
-                    submitButton.textContent = 'Update Answer';
-                    nextButton.disabled = false;
-                } else {
-                    submitButton.textContent = 'Submit Answer';
-                }
-            }
-
-            previousQuestion() {
-                if (this.currentQuestionIndex > 0) {
-                    this.currentQuestionIndex--;
-                    this.displayQuestion();
-                }
-            }
-
-            nextQuestion() {
-                if (this.currentQuestionIndex < this.questions.length - 1) {
-                    this.currentQuestionIndex++;
-                    this.displayQuestion();
-                }
-            }
-        }
-
-
-
-        // BFF Configuration  
-        // ✅ Updated URL for new deployment with correct Google Sheets IDs
-        const BFF_BASE_URL = 'https://github-io-topaz-one.vercel.app/api';
-        // Handle Google Identity Services loading errors
-        function handleGISLoadError() {
-            console.error('❌ Google Identity Services failed to load');
-            const loginSection = document.getElementById('loginSection');
-            if (loginSection) {
-                loginSection.innerHTML = `
-                    <div class="login-container">
-                        <h2>⚠️ Authentication Service Unavailable</h2>
-                        <p>Google Identity Services could not be loaded. This may be due to:</p>
-                        <ul style="text-align: left; margin: 20px 0;">
-                            <li>Browser blocking third-party scripts</li>
-                            <li>Ad blockers or privacy extensions</li>
-                            <li>Strict CORS policies</li>
-                            <li>Network connectivity issues</li>
-                        </ul>
-                        <p><strong>Try:</strong></p>
-                        <ul style="text-align: left; margin: 20px 0;">
-                            <li>Refreshing the page</li>
-                            <li>Trying a different browser</li>
-                            <li>Disabling browser extensions temporarily</li>
-                            <li>Checking your internet connection</li>
-                        </ul>
-                        <button onclick="location.reload()" style="padding: 10px 20px; font-size: 1em; cursor: pointer;">
-                            🔄 Retry
-                        </button>
-                    </div>
-                `;
-            }
-        }
-        
-        // Session Management Functions
-        function initializeAuth() {
-            console.log('🚀 Initializing authentication...');
-            
-            // Test BFF connection first
-            testBFFConnection().then(() => {
-                // Check if user has a valid session
-                const sessionId = sessionStorage.getItem('session_id');
-                if (sessionId) {
-                    console.log('📋 Found existing session, validating...');
-                    validateSession(sessionId);
-                } else {
-                    console.log('🔐 No session found, showing login');
-                    showLogin();
-                }
-            }).catch(error => {
-                console.error('❌ BFF connection test failed:', error);
-                showLogin(); // Still show login even if BFF test fails
+        // Navigation functionality
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                section.classList.remove('active');
             });
-        }
-        
-        async function testBFFConnection() {
-            try {
-                console.log('🧪 Testing BFF connection...');
-                const response = await fetch(BFF_BASE_URL);
-                console.log('📡 BFF test response:', response.status, response.statusText);
-                
-                if (response.status === 404) {
-                    console.log('✅ BFF responding (404 expected for no params)');
-                    return;
-                } else if (response.ok) {
-                    console.log('✅ BFF responding normally');
-                    return;
-                } else {
-                    throw new Error(`BFF returned ${response.status}: ${response.statusText}`);
-                }
-            } catch (error) {
-                console.error('❌ BFF connection failed:', error);
-                throw error;
-            }
-        }
-        
-        async function validateSession(sessionId) {
-            try {
-                console.log('🔍 Validating session:', sessionId);
-                const url = `${BFF_BASE_URL}?path=questions&session=${sessionId}`;
-                console.log('📡 Fetching:', url);
-                
-                const response = await fetch(url);
-                console.log('📥 Response status:', response.status, response.statusText);
-                
-                if (response.ok) {
-                    console.log('✅ Session valid, showing quiz');
-                    showQuiz();
-                } else {
-                    console.log('❌ Session invalid, status:', response.status);
-                    const errorText = await response.text();
-                    console.log('❌ Error response:', errorText);
-                    clearSession();
-                    showLogin();
-                }
-            } catch (error) {
-                console.error('❌ Session validation error:', error);
-                console.error('❌ Error details:', error.message);
-                clearSession();
-                showLogin();
-            }
-        }
-        
-        function clearSession() {
-            sessionStorage.removeItem('session_id');
-            sessionStorage.removeItem('user_info');
-            localStorage.removeItem('quiz_progress');
-        }
-
-        // CSV Parsing and Question Loading
-        function parseCSV(csvText) {
-            const lines = csvText.trim().split('\n');
-            const headers = lines[0].split(',').map(h => h.replace(/"/g, ''));
-            const questions = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
-                const question = {};
-
-                headers.forEach((header, index) => {
-                    question[header.toLowerCase().replace(/\s+/g, '_')] = values[index];
-                });
-
-                questions.push(question);
-            }
-
-            return questions;
-        }
-
-        async function loadQuestionsFromBFF() {
-            try {
-                const sessionId = sessionStorage.getItem('session_id');
-                if (!sessionId) {
-                    throw new Error('No valid session');
-                }
-
-                const response = await fetch(`${BFF_BASE_URL}/questions?session=${sessionId}`);
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        // Session expired, clear and redirect to login
-                        clearSession();
-                        showLogin();
-                        throw new Error('Session expired. Please sign in again.');
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const csvText = await response.text();
-                console.log('✅ Questions loaded securely from BFF');
-                return parseCSV(csvText);
-            } catch (error) {
-                console.error('❌ Error loading questions:', error);
-                return null;
-            }
-        }
-
-        // BFF Authentication: Handle Google OAuth response and create secure session
-        async function handleCredentialResponse(response) {
-            try {
-                console.log('Google OAuth response received');
-                
-                // Validate response before processing
-                if (!response || !response.credential) {
-                    throw new Error('Invalid authentication response');
-                }
-
-                console.log('🔄 Sending token to BFF for validation...');
-
-                // Send token to BFF for server-side validation and session creation
-                console.log('📡 Sending login request to BFF:', BFF_BASE_URL);
-                const loginResponse = await fetch(`${BFF_BASE_URL}/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        token: response.credential
-                    })
-                });
-
-                console.log('📥 Login response status:', loginResponse.status, loginResponse.statusText);
-
-                if (!loginResponse.ok) {
-                    const errorText = await loginResponse.text();
-                    console.error('❌ Login failed with status:', loginResponse.status);
-                    console.error('❌ Error response:', errorText);
-                    
-                    let errorMessage = 'Login failed';
-                    try {
-                        const errorData = JSON.parse(errorText);
-                        errorMessage = errorData.message || errorMessage;
-                    } catch (e) {
-                        errorMessage = `HTTP ${loginResponse.status}: ${errorText}`;
-                    }
-                    
-                    throw new Error(errorMessage);
-                }
-
-                const loginData = await loginResponse.json();
-                
-                if (!loginData.success) {
-                    throw new Error('Server authentication failed');
-                }
-
-                console.log('✅ BFF Authentication successful for:', loginData.user.name);
-
-                // Store only session ID and minimal user info (no tokens!)
-                sessionStorage.setItem('session_id', loginData.sessionId);
-                sessionStorage.setItem('user_info', JSON.stringify(loginData.user));
-
-                // Hide login section and show quiz
-                hideLogin();
-                showQuiz();
-
-                // Load questions from BFF and initialize quiz
-                const questions = await loadQuestionsFromBFF();
-                console.log('📊 Questions from BFF:', questions ? questions.length : 'null/undefined', questions);
-                if (questions && questions.length > 0) {
-                    console.log('✅ Starting quiz with', questions.length, 'questions');
-                    new MathQuiz(questions);
-                } else {
-                    console.error('❌ No questions received from BFF');
-                    alert('Error loading questions. Please try again.');
-                }
-            } catch (error) {
-                console.error('❌ Authentication error:', error);
-                alert(`Sign-in failed: ${error.message}`);
-            }
-        }
-
-        // #claude Security: JWT decoding with validation
-        function decodeJwtResponse(token) {
-            try {
-                // #claude Security: Validate JWT structure
-                const parts = token.split('.');
-                if (parts.length !== 3) {
-                    throw new Error('Invalid JWT format');
-                }
-                
-                const base64Url = parts[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                
-                const payload = JSON.parse(jsonPayload);
-                
-                // #claude Security: Validate token expiration
-                const now = Math.floor(Date.now() / 1000);
-                if (payload.exp && payload.exp < now) {
-                    throw new Error('Token has expired');
-                }
-                
-                // #claude Security: Validate issuer
-                if (payload.iss !== 'https://accounts.google.com') {
-                    throw new Error('Invalid token issuer');
-                }
-                
-                return payload;
-            } catch (error) {
-                console.error('JWT decode error:', error);
-                throw new Error('Failed to decode authentication token');
-            }
-        }
-
-        function hideLogin() {
-            document.getElementById('loginSection').style.display = 'none';
-        }
-
-        function showQuiz() {
-            document.getElementById('quizContainer').style.display = 'block';
-
-            // Display user info from session (not localStorage)
-            const userInfo = JSON.parse(sessionStorage.getItem('user_info') || '{}');
-            const header = document.querySelector('.header');
             
-            // Check if user display already exists to prevent duplicates
-            const existingUserDisplay = header.querySelector('.user-info');
-            if (!existingUserDisplay) {
-                // Add user info display only if it doesn't exist
-                const userDisplay = document.createElement('div');
-                userDisplay.className = 'user-info';
-                // #claude Security: Sanitize user data to prevent XSS
-                const safeName = (userInfo.name || 'User').replace(/[<>]/g, '');
-                const safePicture = (userInfo.picture || '').replace(/[<>"']/g, '');
-                
-                userDisplay.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <img src="${safePicture}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%;" onerror="this.style.display='none'" loading="lazy">
-                        <span style="color: #4a5568; font-weight: bold;">Welcome, ${safeName}!</span>
-                        <button onclick="logout()" class="nav-button" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;">Logout</button>
-                    </div>
-                `;
-                header.insertBefore(userDisplay, header.firstChild);
-            }
-
-            // If no quiz is initialized yet, load questions from BFF and initialize it
-            if (!window.currentQuiz) {
-                initializeQuizFromBFF();
-            }
+            // Show target section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Update navigation active state
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Add active class to clicked nav item
+            event.target.classList.add('active');
+            
+            // Close mobile menu if open
+            document.getElementById('navLinks').classList.remove('active');
         }
-
-        // Initialize quiz by loading questions from BFF
-        async function initializeQuizFromBFF() {
-            try {
-                console.log('🔄 Loading questions from BFF for session validation...');
-                const questions = await loadQuestionsFromBFF();
-                console.log('📊 Questions from BFF:', questions ? questions.length : 'null/undefined', questions);
-                if (questions && questions.length > 0) {
-                    console.log('✅ Starting quiz with', questions.length, 'questions');
-                    window.currentQuiz = new MathQuiz(questions);
-                } else {
-                    console.error('❌ No questions received from BFF');
-                    alert('Error loading questions. Please try again.');
-                }
-            } catch (error) {
-                console.error('❌ Error initializing quiz:', error);
-                alert('Error loading quiz. Please try again.');
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+        // System tabs functionality
+        function showTab(tabId) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Show target tab content
+            document.getElementById(tabId).classList.add('active');
+            
+            // Update tab button active state
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab button
+            event.target.classList.add('active');
+        }
+        // Form submission handler
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            // Get form data
+            const formData = new FormData(event.target);
+            const name = formData.get('name');
+            const email = formData.get('email');
+            const company = formData.get('company');
+            const message = formData.get('message');
+            
+            // Simple validation
+            if (!name || !email || !message) {
+                alert('Please fill in all required fields.');
+                return;
             }
+            
+            // Simulate form submission (replace with actual form handling)
+            alert(`Thank you ${name}! Your message has been received. We'll get back to you at ${email} within 24 hours.`);
+            
+            // Reset form
+            event.target.reset();
         }
-
-        // BFF Logout: Secure logout with server-side session destruction
-        async function logout() {
-            try {
-                const sessionId = sessionStorage.getItem('session_id');
-                
-                // Notify BFF to destroy session
-                if (sessionId) {
-                    try {
-                        await fetch(`${BFF_BASE_URL}/logout?session=${sessionId}`);
-                        console.log('✅ Server session destroyed');
-                    } catch (error) {
-                        console.error('⚠️ Failed to destroy server session:', error);
-                        // Continue with client cleanup even if server logout fails
-                    }
-                }
-                
-                // Revoke Google token
-                if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-                    google.accounts.id.disableAutoSelect();
-                }
-                
-                // Clear all client-side data
-                clearSession();
-
-                // Show login section again
-                document.getElementById('loginSection').style.display = 'flex';
-                document.getElementById('quizContainer').style.display = 'none';
-
-                // Force page reload to clear any remaining state
-                location.reload();
-            } catch (error) {
-                console.error('Logout error:', error);
-                // Fallback: clear local storage and reload
-                localStorage.clear();
-                sessionStorage.clear();
-                location.reload();
-            }
-        }
-
-
-
-        // Show login section
-        function showLogin() {
-            document.getElementById('loginSection').style.display = 'flex';
-            document.getElementById('quizContainer').style.display = 'none';
-        }
-
-        // Check authentication state when page loads
+        // Smooth scrolling effect for navigation
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔄 Page loaded, checking authentication state...');
-            console.log('📍 Login section element:', document.getElementById('loginSection'));
-            console.log('📍 Quiz container element:', document.getElementById('quizContainer'));
-            initializeAuth();
+            // Add scroll effect to navigation
+            window.addEventListener('scroll', function() {
+                const nav = document.querySelector('nav');
+                if (window.scrollY > 50) {
+                    nav.style.background = 'rgba(0, 0, 0, 0.95)';
+                } else {
+                    nav.style.background = 'rgba(0, 0, 0, 0.8)';
+                }
+            });
+            
+            // Initialize animations
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.animation = 'fadeIn 0.6s ease-in-out';
+                    }
+                });
+            }, observerOptions);
+            
+            // Observe skill cards for animation
+            document.querySelectorAll('.skill-card').forEach(card => {
+                observer.observe(card);
+            });
+        });
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('nav');
+            const navLinks = document.getElementById('navLinks');
+            const mobileToggle = document.querySelector('.mobile-toggle');
+            
+            if (!nav.contains(event.target) && navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+            }
+        });
+        // Keyboard navigation support
+        document.addEventListener('keydown', function(event) {
+            // Close mobile menu with Escape key
+            if (event.key === 'Escape') {
+                document.getElementById('navLinks').classList.remove('active');
+            }
+        });
+        // Parallax effect for background grid
+        window.addEventListener('scroll', function() {
+            const scrolled = window.pageYOffset;
+            const grid = document.querySelector('.grid-background');
+            const rate = scrolled * -0.5;
+            grid.style.transform = `translate3d(0, ${rate}px, 0)`;
         });
     </script>
 </body>

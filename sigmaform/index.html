@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/15/25:17:34:00 -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/15/25:19:50:00 - Migrated to Vercel Backend -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -486,7 +486,7 @@
 
             async loadQuestions() {
                 // ✅ Production Apps Script URL for SigmaForm Quiz
-                const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvhxFHfVIAFklWFkx2HUbTKp0K900kKJOp-VaAFm-b3AmQu1jXE08ipZ_OHvBbiKVw/exec';
+                const APPS_SCRIPT_URL = 'https://github-io-topaz-one.vercel.app/api/questions';
                 
                 
                 console.log('🔄 STEP 1: Starting to load questions from Google Sheets...');
@@ -743,13 +743,12 @@
                         throw new Error('No valid session');
                     }
 
-                    const response = await fetch(BFF_BASE_URL, {
+                    const response = await fetch(`${BFF_BASE_URL}/validate`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'text/plain;charset=utf-8',
+                            'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            action: 'validate-answer',
                             sessionId: sessionId,
                             questionNumber: questionNumber,
                             userAnswer: userAnswer
@@ -847,7 +846,7 @@
 
         // BFF Configuration  
         // ✅ Updated URL for new deployment with correct Google Sheets IDs
-        const BFF_BASE_URL = 'https://script.google.com/macros/s/AKfycbzvhxFHfVIAFklWFkx2HUbTKp0K900kKJOp-VaAFm-b3AmQu1jXE08ipZ_OHvBbiKVw/exec';
+        const BFF_BASE_URL = 'https://github-io-topaz-one.vercel.app/api';
         // Handle Google Identity Services loading errors
         function handleGISLoadError() {
             console.error('❌ Google Identity Services failed to load');
@@ -980,7 +979,7 @@
                     throw new Error('No valid session');
                 }
 
-                const response = await fetch(`${BFF_BASE_URL}?path=questions&session=${sessionId}`);
+                const response = await fetch(`${BFF_BASE_URL}/questions?session=${sessionId}`);
                 if (!response.ok) {
                     if (response.status === 401) {
                         // Session expired, clear and redirect to login
@@ -1013,13 +1012,12 @@
 
                 // Send token to BFF for server-side validation and session creation
                 console.log('📡 Sending login request to BFF:', BFF_BASE_URL);
-                const loginResponse = await fetch(BFF_BASE_URL, {
+                const loginResponse = await fetch(`${BFF_BASE_URL}/login`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        action: 'login',
                         token: response.credential
                     })
                 });
@@ -1173,7 +1171,7 @@
                 // Notify BFF to destroy session
                 if (sessionId) {
                     try {
-                        await fetch(`${BFF_BASE_URL}?path=logout&session=${sessionId}`);
+                        await fetch(`${BFF_BASE_URL}/logout?session=${sessionId}`);
                         console.log('✅ Server session destroyed');
                     } catch (error) {
                         console.error('⚠️ Failed to destroy server session:', error);
