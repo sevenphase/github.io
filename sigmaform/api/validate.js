@@ -104,8 +104,8 @@ async function fetchAnswersFromSheets() {
   try {
     const accessToken = await getGoogleAccessToken();
 
-    // Use Google Sheets API to get values
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${ANSWERS_SHEET_ID}/values/Sheet1`;
+    // Use Google Sheets API to get all values from first sheet (works regardless of sheet name)
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${ANSWERS_SHEET_ID}/values/A:Z`;
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
