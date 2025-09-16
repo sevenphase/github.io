@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       'sessionId=',
       'HttpOnly',
       'Secure',
-      'SameSite=Strict',
+      'SameSite=None', // Must match the original cookie settings
       'Max-Age=0', // Expire immediately
       'Expires=Thu, 01 Jan 1970 00:00:00 GMT', // Set to past date
       'Path=/'

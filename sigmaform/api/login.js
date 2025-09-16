@@ -115,12 +115,12 @@ export default async function handler(req, res) {
       userInfo: userInfo
     });
 
-    // Set HttpOnly cookie with security flags
+    // Set HttpOnly cookie with security flags for cross-origin
     const cookieOptions = [
       `sessionId=${sessionToken}`,
       'HttpOnly',
       'Secure',
-      'SameSite=Strict',
+      'SameSite=None', // Allow cross-site cookies for sevenphase.net -> vercel.app
       `Max-Age=${Math.floor(SESSION_TIMEOUT / 1000)}`, // Convert to seconds
       'Path=/'
     ].join('; ');
