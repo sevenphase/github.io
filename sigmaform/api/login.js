@@ -1,22 +1,37 @@
-// Vercel API function for login
+// Vercel API function for login - HttpOnly cookies with JWT
 const crypto = require('crypto');
 
-// Configuration - move to environment variables
+// Configuration
 const CLIENT_ID = '141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com';
 const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
 
-// In-memory session storage (use Redis/DB for production)
-const sessions = new Map();
+// Secret for JWT signing (in production, use environment variable)
+const JWT_SECRET = process.env.JWT_SECRET || 'sigmaform-jwt-secret-change-in-production';
 
-// Clean up expired sessions periodically
-setInterval(() => {
+// Simple JWT implementation for stateless sessions
+function createJWT(payload) {
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
+  };
+
   const now = Date.now();
-  for (const [sessionId, session] of sessions.entries()) {
-    if (now - session.lastAccess > SESSION_TIMEOUT) {
-      sessions.delete(sessionId);
-    }
-  }
-}, 30 * 60 * 1000); // Clean every 30 minutes
+  const jwtPayload = {
+    ...payload,
+    iat: now,
+    exp: now + SESSION_TIMEOUT
+  };
+
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
+  const encodedPayload = Buffer.from(JSON.stringify(jwtPayload)).toString('base64url');
+
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(`${encodedHeader}.${encodedPayload}`)
+    .digest('base64url');
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
 
 // Validate Google JWT token
 async function validateGoogleToken(token) {
@@ -55,23 +70,10 @@ async function validateGoogleToken(token) {
   }
 }
 
-// Create session
-function createSession(userId, userInfo) {
-  const sessionId = crypto.randomUUID();
-  const sessionData = {
-    userId: userId,
-    userInfo: userInfo,
-    createdAt: Date.now(),
-    lastAccess: Date.now()
-  };
-
-  sessions.set(sessionId, sessionData);
-  return sessionId;
-}
-
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Enable CORS with credentials for cookies
+  res.setHeader('Access-Control-Allow-Origin', 'https://sevenphase.net');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -107,12 +109,26 @@ export default async function handler(req, res) {
       picture: payload.picture
     };
 
-    // Create secure session
-    const sessionId = createSession(payload.sub, userInfo);
+    // Create stateless JWT session
+    const sessionToken = createJWT({
+      userId: payload.sub,
+      userInfo: userInfo
+    });
+
+    // Set HttpOnly cookie with security flags
+    const cookieOptions = [
+      `sessionId=${sessionToken}`,
+      'HttpOnly',
+      'Secure',
+      'SameSite=Strict',
+      `Max-Age=${Math.floor(SESSION_TIMEOUT / 1000)}`, // Convert to seconds
+      'Path=/'
+    ].join('; ');
+
+    res.setHeader('Set-Cookie', cookieOptions);
 
     const response = {
       success: true,
-      sessionId: sessionId,
       user: userInfo,
       timestamp: new Date().toISOString()
     };
@@ -126,5 +142,35 @@ export default async function handler(req, res) {
   }
 }
 
-// Export session management for other functions
-export { sessions, SESSION_TIMEOUT };
+// JWT verification function for other API endpoints
+function verifyJWT(token) {
+  try {
+    const [headerB64, payloadB64, signature] = token.split('.');
+
+    // Verify signature
+    const expectedSignature = crypto
+      .createHmac('sha256', JWT_SECRET)
+      .update(`${headerB64}.${payloadB64}`)
+      .digest('base64url');
+
+    if (signature !== expectedSignature) {
+      return null;
+    }
+
+    // Decode payload
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString());
+
+    // Check expiration
+    if (Date.now() > payload.exp) {
+      return null;
+    }
+
+    return payload;
+  } catch (error) {
+    console.error('JWT verification error:', error);
+    return null;
+  }
+}
+
+// Export for other functions
+export { verifyJWT };

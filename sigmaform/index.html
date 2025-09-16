@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/16/25:03:30:00 - Fixed CSP for Vercel Backend -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/16/25:04:45:00 - Migrated to HttpOnly Cookie Authentication -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -738,18 +738,14 @@
 
             async checkAnswer(userAnswer, questionNumber) {
                 try {
-                    const sessionId = sessionStorage.getItem('session_id');
-                    if (!sessionId) {
-                        throw new Error('No valid session');
-                    }
-
+                    // Session is handled by HttpOnly cookies automatically
                     const response = await fetch(`${BFF_BASE_URL}/validate`, {
                         method: 'POST',
+                        credentials: 'include', // Include HttpOnly cookies
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            sessionId: sessionId,
                             questionNumber: questionNumber,
                             userAnswer: userAnswer
                         })
@@ -882,14 +878,24 @@
             console.log('🚀 Initializing authentication...');
             
             // Test BFF connection first
-            testBFFConnection().then(() => {
-                // Check if user has a valid session
-                const sessionId = sessionStorage.getItem('session_id');
-                if (sessionId) {
-                    console.log('📋 Found existing session, validating...');
-                    validateSession(sessionId);
-                } else {
-                    console.log('🔐 No session found, showing login');
+            testBFFConnection().then(async () => {
+                // Check if user has a valid session by trying to load questions
+                console.log('📋 Checking for existing HttpOnly session...');
+                try {
+                    const response = await fetch(`${BFF_BASE_URL}/questions`, {
+                        credentials: 'include' // Include HttpOnly cookies
+                    });
+
+                    if (response.ok) {
+                        console.log('✅ Valid session found, loading quiz...');
+                        showQuiz();
+                        await initializeQuizFromBFF();
+                    } else {
+                        console.log('🔐 No valid session, showing login');
+                        showLogin();
+                    }
+                } catch (error) {
+                    console.log('🔐 Session check failed, showing login');
                     showLogin();
                 }
             }).catch(error => {
@@ -974,12 +980,10 @@
 
         async function loadQuestionsFromBFF() {
             try {
-                const sessionId = sessionStorage.getItem('session_id');
-                if (!sessionId) {
-                    throw new Error('No valid session');
-                }
-
-                const response = await fetch(`${BFF_BASE_URL}/questions?session=${sessionId}`);
+                // Session is handled by HttpOnly cookies automatically
+                const response = await fetch(`${BFF_BASE_URL}/questions`, {
+                    credentials: 'include' // Include HttpOnly cookies
+                });
                 if (!response.ok) {
                     if (response.status === 401) {
                         // Session expired, clear and redirect to login
@@ -1014,6 +1018,7 @@
                 console.log('📡 Sending login request to BFF:', BFF_BASE_URL);
                 const loginResponse = await fetch(`${BFF_BASE_URL}/login`, {
                     method: 'POST',
+                    credentials: 'include', // Include cookies
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -1048,8 +1053,8 @@
 
                 console.log('✅ BFF Authentication successful for:', loginData.user.name);
 
-                // Store only session ID and minimal user info (no tokens!)
-                sessionStorage.setItem('session_id', loginData.sessionId);
+                // Session stored securely in HttpOnly cookie - no client-side storage needed
+                // Store only minimal user info for display purposes
                 sessionStorage.setItem('user_info', JSON.stringify(loginData.user));
 
                 // Hide login section and show quiz
@@ -1166,17 +1171,15 @@
         // BFF Logout: Secure logout with server-side session destruction
         async function logout() {
             try {
-                const sessionId = sessionStorage.getItem('session_id');
-                
-                // Notify BFF to destroy session
-                if (sessionId) {
-                    try {
-                        await fetch(`${BFF_BASE_URL}/logout?session=${sessionId}`);
-                        console.log('✅ Server session destroyed');
-                    } catch (error) {
-                        console.error('⚠️ Failed to destroy server session:', error);
-                        // Continue with client cleanup even if server logout fails
-                    }
+                // Notify BFF to clear HttpOnly session cookie
+                try {
+                    await fetch(`${BFF_BASE_URL}/logout`, {
+                        credentials: 'include' // Include HttpOnly cookies
+                    });
+                    console.log('✅ HttpOnly session cookie cleared');
+                } catch (error) {
+                    console.error('⚠️ Failed to clear server session:', error);
+                    // Continue with client cleanup even if server logout fails
                 }
                 
                 // Revoke Google token

@@ -1,29 +1,42 @@
-// Vercel API function for answer validation - fetches from Google Sheets
-import { sessions, SESSION_TIMEOUT } from './login.js';
+// Vercel API function for answer validation - reads session from HttpOnly cookies
+import { verifyJWT } from './login.js';
 
 // Configuration
 const ANSWERS_SHEET_ID = '1hjVAVJHmZQcsWl1ZHi2Xu_9FJiSNNTAogF7lhEMVn8o';
 
-// Validate session
-function validateSession(sessionId) {
-  if (!sessionId) return null;
+// Parse cookies from request headers
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (cookieHeader) {
+    cookieHeader.split(';').forEach(cookie => {
+      const [name, value] = cookie.trim().split('=');
+      if (name && value) {
+        cookies[name] = decodeURIComponent(value);
+      }
+    });
+  }
+  return cookies;
+}
 
+// Validate session from HttpOnly cookie
+function validateSessionFromCookie(req) {
   try {
-    const session = sessions.get(sessionId);
-    if (!session) return null;
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionToken = cookies.sessionId;
 
-    const now = Date.now();
-
-    // Check if session has expired
-    if (now - session.lastAccess > SESSION_TIMEOUT) {
-      sessions.delete(sessionId);
+    if (!sessionToken) {
+      console.log('No sessionId cookie found');
       return null;
     }
 
-    // Update last access time
-    session.lastAccess = now;
-    sessions.set(sessionId, session);
+    // Verify JWT token
+    const session = verifyJWT(sessionToken);
+    if (!session) {
+      console.log('Invalid or expired JWT session');
+      return null;
+    }
 
+    console.log('Valid session for user:', session.userInfo?.name);
     return session;
   } catch (error) {
     console.error('Session validation error:', error);
@@ -92,8 +105,9 @@ function parseAnswersCSV(csvData, questionNumber) {
 }
 
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Enable CORS with credentials for cookies
+  res.setHeader('Access-Control-Allow-Origin', 'https://sevenphase.net');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -106,10 +120,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { sessionId, questionNumber, userAnswer } = req.body;
+    const { questionNumber, userAnswer } = req.body;
 
-    // Validate session
-    const session = validateSession(sessionId);
+    // Validate session from HttpOnly cookie
+    const session = validateSessionFromCookie(req);
     if (!session) {
       return res.status(401).json({ error: 'Authentication required' });
     }
