@@ -44,21 +44,84 @@ function validateSessionFromCookie(req) {
   }
 }
 
-// Fetch questions from Google Sheets
-async function fetchQuestionsFromSheets() {
+// Get Google OAuth2 access token using service account
+async function getGoogleAccessToken() {
   try {
-    // Use Google Sheets public CSV export
-    const url = `https://docs.google.com/spreadsheets/d/${QUESTIONS_SHEET_ID}/export?format=csv`;
-    const response = await fetch(url);
+    const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const projectId = process.env.GOOGLE_PROJECT_ID;
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch from Google Sheets: ${response.status}`);
+    if (!serviceAccountEmail || !privateKey || !projectId) {
+      throw new Error('Missing Google Service Account environment variables');
     }
 
-    const csvData = await response.text();
-    return csvData;
+    // Create JWT for Google OAuth2
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      iss: serviceAccountEmail,
+      scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: now + 3600,
+      iat: now
+    };
+
+    // Sign JWT using private key
+    const crypto = require('crypto');
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(`${header}.${payloadB64}`);
+    const signature = sign.sign(privateKey, 'base64url');
+
+    const jwt = `${header}.${payloadB64}.${signature}`;
+
+    // Exchange JWT for access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.text();
+      throw new Error(`Token exchange failed: ${error}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    return tokenData.access_token;
   } catch (error) {
-    console.error('Error fetching from Google Sheets:', error);
+    console.error('Error getting Google access token:', error);
+    throw error;
+  }
+}
+
+// Fetch questions from Google Sheets using API
+async function fetchQuestionsFromSheets() {
+  try {
+    const accessToken = await getGoogleAccessToken();
+
+    // Use Google Sheets API to get all values from first sheet
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${QUESTIONS_SHEET_ID}/values/A:Z`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to fetch from Google Sheets API: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.values || [];
+  } catch (error) {
+    console.error('Error fetching questions from Google Sheets:', error);
     throw error;
   }
 }
@@ -85,13 +148,51 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Fetch questions from Google Sheets
-    console.log('Fetching questions from Google Sheets...');
-    const questionsData = await fetchQuestionsFromSheets();
+    // Fetch questions from Google Sheets API
+    console.log('Fetching questions from Google Sheets API...');
+    const sheetsData = await fetchQuestionsFromSheets();
 
-    // Return questions as CSV (same format as your Apps Script)
-    res.setHeader('Content-Type', 'text/plain');
-    return res.status(200).send(questionsData);
+    // Convert 2D array to structured objects
+    if (!sheetsData || sheetsData.length === 0) {
+      throw new Error('No data received from Google Sheets');
+    }
+
+    const headers = sheetsData[0]; // First row contains headers
+    const questions = [];
+
+    // Process each data row (skip header row)
+    for (let i = 1; i < sheetsData.length; i++) {
+      const row = sheetsData[i];
+      if (!row || row.length === 0) continue;
+
+      const question = {
+        questionNumber: parseInt(row[0]) || i,
+        question: row[1]?.trim() || '',
+        topic: row[2]?.trim() || '',
+        answerType: row[3]?.trim() || 'Short Answer',
+        options: row[4]?.trim() || ''
+      };
+
+      // Parse multiple choice options into choices array
+      if (question.answerType === 'Multiple Choice' && question.options) {
+        // Parse options like "A) 9; B) 12; C) 17; D) 51" into individual choices
+        const choiceMatches = question.options.match(/[A-D]\)[^;]+/g);
+        if (choiceMatches) {
+          question.choices = choiceMatches.map(choice => choice.substring(3).trim());
+        } else {
+          // Fallback: split by semicolon and clean up
+          question.choices = question.options.split(';').map(choice => choice.trim()).filter(choice => choice.length > 0);
+        }
+      }
+
+      questions.push(question);
+    }
+
+    console.log(`Processed ${questions.length} questions from Sheets API`);
+
+    // Return structured JSON
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(200).json({ questions });
 
   } catch (error) {
     console.error('Questions error:', error);

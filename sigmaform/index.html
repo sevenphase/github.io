@@ -661,7 +661,7 @@
             displayQuestion() {
                 const question = this.questions[this.currentQuestionIndex];
                 
-                document.getElementById('questionNumber').textContent = `Question ${question.question_number || this.currentQuestionIndex + 1}`;
+                document.getElementById('questionNumber').textContent = `Question ${question.questionNumber || this.currentQuestionIndex + 1}`;
                 document.getElementById('questionText').textContent = question.question;
                 document.getElementById('topicBadge').textContent = question.topic;
                 document.getElementById('questionCounter').textContent = `Question ${this.currentQuestionIndex + 1} of ${this.questions.length}`;
@@ -725,7 +725,7 @@
                 this.answers[this.currentQuestionIndex] = userAnswer;
                 
                 // Use BFF to validate answer securely
-                const result = await this.checkAnswer(userAnswer, question.question_number || this.currentQuestionIndex + 1);
+                const result = await this.checkAnswer(userAnswer, question.questionNumber || this.currentQuestionIndex + 1);
 
                 if (result.correct && !this.isQuestionAnswered(this.currentQuestionIndex)) {
                     this.score += result.points || 1;
@@ -993,9 +993,9 @@
                     }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const csvText = await response.text();
-                console.log('✅ Questions loaded securely from BFF');
-                return parseCSV(csvText);
+                const jsonData = await response.json();
+                console.log('✅ Questions loaded securely from BFF as JSON');
+                return jsonData.questions;
             } catch (error) {
                 console.error('❌ Error loading questions:', error);
                 return null;
