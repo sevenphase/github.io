@@ -661,7 +661,7 @@
             displayQuestion() {
                 const question = this.questions[this.currentQuestionIndex];
                 
-                document.getElementById('questionNumber').textContent = `Question ${question.number}`;
+                document.getElementById('questionNumber').textContent = `Question ${question.question_number || this.currentQuestionIndex + 1}`;
                 document.getElementById('questionText').textContent = question.question;
                 document.getElementById('topicBadge').textContent = question.topic;
                 document.getElementById('questionCounter').textContent = `Question ${this.currentQuestionIndex + 1} of ${this.questions.length}`;
