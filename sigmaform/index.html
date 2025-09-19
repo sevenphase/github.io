@@ -953,9 +953,32 @@
         }
         
         function clearSession() {
-            sessionStorage.removeItem('session_id');
-            sessionStorage.removeItem('user_info');
-            localStorage.removeItem('quiz_progress');
+            // 1. Clear all app storage completely
+            sessionStorage.clear();
+            localStorage.clear();
+
+            // 2. Clear Google Identity Services cookies
+            const googleCookies = ['NID', 'g_state', 'sessionId'];
+            googleCookies.forEach(cookieName => {
+                // Clear for current domain
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+                // Clear for parent domain
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.sevenphase.net`;
+                // Clear for root domain
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=sevenphase.net`;
+            });
+
+            // 3. Disable Google Identity Services
+            try {
+                if (typeof google !== 'undefined' && google.accounts?.id) {
+                    google.accounts.id.disableAutoSelect();
+                    google.accounts.id.cancel();
+                }
+            } catch (e) {
+                console.log('Google Identity Services cleanup attempted');
+            }
+
+            console.log('✅ Comprehensive session cleanup completed');
         }
 
         // CSV Parsing and Question Loading
@@ -1198,9 +1221,8 @@
                 location.reload();
             } catch (error) {
                 console.error('Logout error:', error);
-                // Fallback: clear local storage and reload
-                localStorage.clear();
-                sessionStorage.clear();
+                // Fallback: use comprehensive cleanup and reload
+                clearSession();
                 location.reload();
             }
         }
