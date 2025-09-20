@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/19/25:10:45:00 - Added visual feedback animation for answer re-submission -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/19/25:11:15:00 - Fixed multiple choice selection bug -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -716,9 +716,8 @@
                     multipleChoice.style.display = 'none';
                     textInput.value = this.answers[this.currentQuestionIndex] || '';
                     textInput.focus();
+                    this.selectedChoice = null;
                 }
-                
-                this.selectedChoice = null;
             }
 
             selectChoice(index, button) {
