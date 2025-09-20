@@ -767,9 +767,11 @@
             }
 
             selectChoice(index, button) {
+                console.log('🔍 selectChoice called with index:', index);
                 document.querySelectorAll('.choice-button').forEach(btn => btn.classList.remove('selected'));
                 button.classList.add('selected');
                 this.selectedChoice = index;
+                console.log('🔍 selectedChoice set to:', this.selectedChoice);
             }
 
             async submitAnswer() {
@@ -777,6 +779,7 @@
                 let userAnswer;
                 
                 if (question.answerType === 'Multiple Choice') {
+                    console.log('🔍 submitAnswer: selectedChoice is:', this.selectedChoice);
                     if (this.selectedChoice === null) {
                         alert('Please select an answer!');
                         return;
