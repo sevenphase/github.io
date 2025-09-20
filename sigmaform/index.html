@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:03:25:00 - Fixed async/await syntax error in login -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:03:45:00 - Added Google Sheets user answer tracking -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,6 +11,8 @@
     
     <!-- Google Identity Services - with error handling -->
     <script src="https://accounts.google.com/gsi/client" async defer onerror="handleGISLoadError()"></script>
+    <!-- Google APIs for Sheets access -->
+    <script src="https://apis.google.com/js/api.js" async defer></script>
 
     <style>
         * {
@@ -312,6 +314,28 @@
                 transform: translateX(-50%) translateY(0);
                 opacity: 1;
                 scale: 1;
+            }
+        }
+
+        @keyframes slideInRight {
+            0% {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            0% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(100%);
+                opacity: 0;
             }
         }
 
@@ -921,9 +945,168 @@
 
 
 
-        // BFF Configuration  
+        // BFF Configuration
         // ✅ Updated URL for new deployment with correct Google Sheets IDs
         const BFF_BASE_URL = 'https://github-io-topaz-one.vercel.app/api';
+
+        // Google OAuth Configuration for Sheets API access
+        const GOOGLE_CLIENT_ID = '141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com';
+        const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+        const QUESTIONS_SHEET_NAME = 'SigmaForm-Math-Quiz-Questions'; // Base name for user answer sheets
+
+        // Google Sheets API - Create or open user answer spreadsheet
+        let gapiLoaded = false;
+        let googleAuth = null;
+
+        // Initialize Google APIs
+        function initializeGoogleAPIs() {
+            return new Promise((resolve, reject) => {
+                if (typeof gapi === 'undefined') {
+                    console.log('⏳ Waiting for Google APIs to load...');
+                    // Retry after a short delay
+                    setTimeout(() => initializeGoogleAPIs().then(resolve).catch(reject), 100);
+                    return;
+                }
+
+                gapi.load('client:auth2', () => {
+                    gapi.client.init({
+                        apiKey: '', // Not needed for OAuth flow
+                        clientId: GOOGLE_CLIENT_ID,
+                        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+                        scope: GOOGLE_SCOPES
+                    }).then(() => {
+                        console.log('✅ Google OAuth2 and Sheets API initialized');
+                        googleAuth = gapi.auth2.getAuthInstance();
+                        gapiLoaded = true;
+                        resolve();
+                    }).catch(reject);
+                });
+            });
+        }
+
+        // Create or open user answer spreadsheet
+        async function createOrOpenUserAnswerSheet(userInfo, questionsCount) {
+            try {
+                if (!gapiLoaded) {
+                    await initializeGoogleAPIs();
+                }
+
+                // Ensure user is signed in for Sheets access
+                if (!googleAuth.isSignedIn.get()) {
+                    console.log('🔐 Requesting Google Sheets access...');
+                    await googleAuth.signIn();
+                }
+
+                const userName = userInfo.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'User';
+                const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                const spreadsheetTitle = `${timestamp}-${QUESTIONS_SHEET_NAME}-Answers-${userName}`;
+
+                console.log(`🔍 Looking for existing spreadsheet: ${spreadsheetTitle}`);
+
+                // Search for existing spreadsheet
+                const searchResponse = await gapi.client.request({
+                    path: 'https://www.googleapis.com/drive/v3/files',
+                    params: {
+                        q: `name='${spreadsheetTitle}' and mimeType='application/vnd.google-apps.spreadsheet'`,
+                        spaces: 'drive'
+                    }
+                });
+
+                let spreadsheetId;
+
+                if (searchResponse.result.files && searchResponse.result.files.length > 0) {
+                    // Spreadsheet exists, use it
+                    spreadsheetId = searchResponse.result.files[0].id;
+                    console.log('✅ Found existing answer spreadsheet:', spreadsheetId);
+                } else {
+                    // Create new spreadsheet
+                    console.log('📝 Creating new answer spreadsheet...');
+
+                    const createResponse = await gapi.client.request({
+                        path: 'https://sheets.googleapis.com/v4/spreadsheets',
+                        method: 'POST',
+                        body: {
+                            properties: {
+                                title: spreadsheetTitle
+                            },
+                            sheets: [{
+                                properties: {
+                                    title: 'Answers',
+                                    gridProperties: {
+                                        rowCount: questionsCount + 10,
+                                        columnCount: 10
+                                    }
+                                }
+                            }]
+                        }
+                    });
+
+                    spreadsheetId = createResponse.result.spreadsheetId;
+
+                    // Add headers and question numbers
+                    const headers = [['Question Number', 'User Answer', 'Correct', 'Attempt Count', 'Timestamp']];
+                    const questionRows = [];
+
+                    for (let i = 1; i <= questionsCount; i++) {
+                        questionRows.push([i, '', '', '', '']);
+                    }
+
+                    await gapi.client.request({
+                        path: `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Answers!A1:E${questionsCount + 1}`,
+                        method: 'PUT',
+                        params: { valueInputOption: 'RAW' },
+                        body: {
+                            values: [headers[0], ...questionRows]
+                        }
+                    });
+
+                    console.log('✅ Created new answer spreadsheet:', spreadsheetId);
+                }
+
+                // Store spreadsheet ID for later use
+                sessionStorage.setItem('user_answer_sheet_id', spreadsheetId);
+
+                return {
+                    spreadsheetId: spreadsheetId,
+                    spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
+                    title: spreadsheetTitle,
+                    isNew: !searchResponse.result.files?.length
+                };
+
+            } catch (error) {
+                console.error('❌ Error creating/opening answer spreadsheet:', error);
+                throw error;
+            }
+        }
+
+        // Show notification to user
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#48bb78' : type === 'warning' ? '#ed8936' : '#4299e1'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                max-width: 300px;
+                font-size: 0.9em;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
         // Handle Google Identity Services loading errors
         function handleGISLoadError() {
             console.error('❌ Google Identity Services failed to load');
@@ -1163,6 +1346,27 @@
                 // Hide login section and show quiz
                 hideLogin();
                 await showQuiz();
+
+                // Create or open user answer spreadsheet
+                try {
+                    console.log('📊 Setting up user answer tracking...');
+                    const userInfo = loginData.user;
+                    const questionsCount = window.currentQuiz ? window.currentQuiz.questions.length : 35;
+
+                    const spreadsheetInfo = await createOrOpenUserAnswerSheet(userInfo, questionsCount);
+
+                    console.log('✅ Answer tracking ready:', spreadsheetInfo.title);
+
+                    // Show notification to user
+                    if (spreadsheetInfo.isNew) {
+                        showNotification(`📊 Created answer tracking spreadsheet: ${spreadsheetInfo.title}`, 'success');
+                    } else {
+                        showNotification(`📊 Using existing answer spreadsheet`, 'info');
+                    }
+                } catch (error) {
+                    console.error('⚠️ Answer tracking setup failed:', error);
+                    showNotification('⚠️ Answer tracking unavailable - answers will not be saved to your Drive', 'warning');
+                }
             } catch (error) {
                 console.error('❌ Authentication error:', error);
                 alert(`Sign-in failed: ${error.message}`);
