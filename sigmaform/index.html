@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:02:59:00 - Added floating popup feedback for better visibility -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:03:15:00 - Fixed duplicate question loading -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1165,16 +1165,8 @@
                 hideLogin();
                 showQuiz();
 
-                // Load questions from BFF and initialize quiz
-                const questions = await loadQuestionsFromBFF();
-                console.log('📊 Questions from BFF:', questions ? questions.length : 'null/undefined', questions);
-                if (questions && questions.length > 0) {
-                    console.log('✅ Starting quiz with', questions.length, 'questions');
-                    new MathQuiz(questions);
-                } else {
-                    console.error('❌ No questions received from BFF');
-                    alert('Error loading questions. Please try again.');
-                }
+                // Initialize quiz from BFF (avoid duplicate loading)
+                await initializeQuizFromBFF();
             } catch (error) {
                 console.error('❌ Authentication error:', error);
                 alert(`Sign-in failed: ${error.message}`);
@@ -1249,7 +1241,7 @@
 
             // If no quiz is initialized yet, load questions from BFF and initialize it
             if (!window.currentQuiz) {
-                initializeQuizFromBFF();
+                await initializeQuizFromBFF();
             }
         }
 
