@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:03:15:00 - Fixed duplicate question loading -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:03:25:00 - Fixed async/await syntax error in login -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -955,7 +955,7 @@
         }
         
         // Session Management Functions
-        function initializeAuth() {
+        async function initializeAuth() {
             console.log('🚀 Initializing authentication...');
             
             // Test BFF connection first
@@ -969,8 +969,7 @@
 
                     if (response.ok) {
                         console.log('✅ Valid session found, loading quiz...');
-                        showQuiz();
-                        await initializeQuizFromBFF();
+                        await showQuiz();
                     } else {
                         console.log('🔐 No valid session, showing login');
                         showLogin();
@@ -1017,7 +1016,7 @@
                 
                 if (response.ok) {
                     console.log('✅ Session valid, showing quiz');
-                    showQuiz();
+                    await showQuiz();
                 } else {
                     console.log('❌ Session invalid, status:', response.status);
                     const errorText = await response.text();
@@ -1163,10 +1162,7 @@
 
                 // Hide login section and show quiz
                 hideLogin();
-                showQuiz();
-
-                // Initialize quiz from BFF (avoid duplicate loading)
-                await initializeQuizFromBFF();
+                await showQuiz();
             } catch (error) {
                 console.error('❌ Authentication error:', error);
                 alert(`Sign-in failed: ${error.message}`);
@@ -1212,7 +1208,7 @@
             document.getElementById('loginSection').style.display = 'none';
         }
 
-        function showQuiz() {
+        async function showQuiz() {
             document.getElementById('quizContainer').style.display = 'block';
 
             // Display user info from session (not localStorage)
