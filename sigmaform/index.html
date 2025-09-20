@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:04:15:00 - Migrated to modern Google Identity Services -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:04:30:00 - Added real-time spreadsheet answer updates -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,7 +7,7 @@
     <title>Grade 6 Math Quiz</title>
 
     <!-- Content Security Policy optimized for Google Identity Services -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://*.google.com https://*.gstatic.com; connect-src 'self' https://*.google.com https://*.googleapis.com https://script.google.com https://script.googleusercontent.com https://*.vercel.app; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://*.google.com; frame-src https://*.google.com https://*.googleapis.com https://content-sheets.googleapis.com https://content.googleapis.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://*.google.com https://*.gstatic.com https://*.googleapis.com; connect-src 'self' https://*.google.com https://*.googleapis.com https://script.google.com https://script.googleusercontent.com https://*.vercel.app; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://*.google.com; frame-src https://*.google.com https://*.googleapis.com https://content-sheets.googleapis.com https://content.googleapis.com;">
     
     <!-- Google Identity Services - with error handling -->
     <script src="https://accounts.google.com/gsi/client" async defer onerror="handleGISLoadError()"></script>
@@ -527,6 +527,7 @@
                 this.currentQuestionIndex = 0;
                 this.score = 0;
                 this.answers = {};
+                this.attempts = {}; // Track attempts per question
                 this.selectedChoice = null;
                 
                 if (questions) {
@@ -829,6 +830,25 @@
                 
                 this.showFeedback(result.correct, result.notes || '');
                 this.updateNavigationButtons();
+
+                // Update answer in user's spreadsheet
+                try {
+                    const timestamp = new Date().toISOString();
+                    const questionNum = question.questionNumber || this.currentQuestionIndex + 1;
+
+                    // Track attempts for this question
+                    this.attempts[this.currentQuestionIndex] = (this.attempts[this.currentQuestionIndex] || 0) + 1;
+
+                    await updateAnswerInSpreadsheet(
+                        questionNum,
+                        userAnswer,
+                        result.correct,
+                        this.attempts[this.currentQuestionIndex],
+                        timestamp
+                    );
+                } catch (error) {
+                    console.log('⚠️ Spreadsheet update failed, continuing quiz:', error);
+                }
             }
 
             async checkAnswer(userAnswer, questionNumber) {
@@ -1101,6 +1121,50 @@
             } catch (error) {
                 console.error('❌ Error creating/opening answer spreadsheet:', error);
                 throw error;
+            }
+        }
+
+        // Update answer in user's spreadsheet
+        async function updateAnswerInSpreadsheet(questionNumber, userAnswer, isCorrect, attemptCount, timestamp) {
+            try {
+                const spreadsheetId = sessionStorage.getItem('user_answer_sheet_id');
+                if (!spreadsheetId) {
+                    console.log('⚠️ No spreadsheet ID found, skipping update');
+                    return;
+                }
+
+                if (!accessToken) {
+                    console.log('⚠️ No access token, requesting Sheets access...');
+                    await requestSheetsAccess();
+                }
+
+                // Calculate the row number (question number + 1 to account for header)
+                const rowNumber = questionNumber + 1;
+                const range = `Answers!B${rowNumber}:E${rowNumber}`;
+
+                // Prepare the update data
+                const values = [[
+                    userAnswer,                    // Column B: User Answer
+                    isCorrect ? 'TRUE' : 'FALSE', // Column C: Correct
+                    attemptCount,                  // Column D: Attempt Count
+                    timestamp                      // Column E: Timestamp
+                ]];
+
+                // Update the spreadsheet
+                const updateResponse = await gapi.client.request({
+                    path: `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`,
+                    method: 'PUT',
+                    params: { valueInputOption: 'RAW' },
+                    body: { values: values }
+                });
+
+                console.log(`✅ Updated answer for question ${questionNumber} in spreadsheet`);
+                return updateResponse;
+
+            } catch (error) {
+                console.error('❌ Error updating spreadsheet:', error);
+                // Don't throw error - quiz should continue even if spreadsheet update fails
+                showNotification('⚠️ Could not save to spreadsheet, but quiz continues', 'warning');
             }
         }
 
