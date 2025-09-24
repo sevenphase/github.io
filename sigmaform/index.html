@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:04:30:00 - Added real-time spreadsheet answer updates -->
+<!-- SigmaForm Quiz Frontend - Deployed: 09/20/25:04:45:00 - Added dynamic spreadsheet title from questions API -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -972,7 +972,7 @@
         // Google OAuth Configuration for Sheets API access
         const GOOGLE_CLIENT_ID = '141726088289-7rvc4j711ac0ospiiuam4bdmuklahsbe.apps.googleusercontent.com';
         const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-        const QUESTIONS_SHEET_NAME = 'SigmaForm-Math-Quiz-Questions'; // Base name for user answer sheets
+        // Dynamic spreadsheet title - will be populated from API response
 
         // Modern Google Identity Services for Sheets API
         let gapiLoaded = false;
@@ -1044,7 +1044,9 @@
 
                 const userName = userInfo.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'User';
                 const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                const spreadsheetTitle = `${timestamp}-${QUESTIONS_SHEET_NAME}-Answers-${userName}`;
+                // Get dynamic spreadsheet title from session storage (set when questions are loaded)
+                const questionsSheetTitle = sessionStorage.getItem('questions_sheet_title') || 'SigmaForm-Math-Quiz-Questions';
+                const spreadsheetTitle = `${timestamp}-${questionsSheetTitle}-Answers-${userName}`;
 
                 console.log(`🔍 Looking for existing spreadsheet: ${spreadsheetTitle}`);
 
@@ -1370,6 +1372,12 @@
                 }
                 const jsonData = await response.json();
                 console.log('✅ Questions loaded securely from BFF as JSON');
+
+                // Store spreadsheet metadata for answer sheet naming
+                if (jsonData.spreadsheet && jsonData.spreadsheet.title) {
+                    sessionStorage.setItem('questions_sheet_title', jsonData.spreadsheet.title);
+                }
+
                 return jsonData.questions;
             } catch (error) {
                 console.error('❌ Error loading questions:', error);
